@@ -1,0 +1,5 @@
+{
+  "name": "GUI Demo · Small",
+  "size": 3,
+  "note": "Mock-only input used to test the responsive GUI. The real engine owns the final puzzle schema."
+}

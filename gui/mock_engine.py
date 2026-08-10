@@ -1,11 +1,13 @@
-"""A public-state-only mock used to design and test the GUI.
+"""Public-state-only demo gateway used to design and test the GUI.
 
-Replace ``MockGameGateway`` with the real GameEngine adapter during integration.
-The GUI should not need to change as long as the adapter implements GameGateway.
+This module deliberately does not implement CNF, DPLL, or logical deduction.
+It simulates their public responses so the GUI can be completed independently.
+Replace ``MockGameGateway`` with a real adapter during team integration.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -13,13 +15,16 @@ from .models import (
     ActionCode,
     ActionResult,
     CellView,
+    GamePhase,
     GameView,
     HintResult,
+    SolverMetrics,
     Status,
+    TraceEntry,
 )
 
 
-NAMES = (
+CHARACTERS = (
     ("Abel", "Astronaut"),
     ("Bea", "Cook"),
     ("Clara", "Guard"),
@@ -36,87 +41,161 @@ NAMES = (
     ("Noah", "Engineer"),
     ("Owen", "Painter"),
     ("Priya", "Lawyer"),
+    ("Quinn", "Designer"),
+    ("Rosa", "Scientist"),
+    ("Sam", "Journalist"),
+    ("Tara", "Musician"),
+    ("Uma", "Architect"),
+    ("Victor", "Mechanic"),
+    ("Wendy", "Pharmacist"),
+    ("Xavier", "Photographer"),
+    ("Yara", "Librarian"),
 )
 
 
 class MockGameGateway:
     """Predictable demo behavior for exercising all important UI states."""
 
-    def __init__(self) -> None:
-        self._initial_cells = self._make_initial_cells()
-        self._forced = {
-            "B2": Status.CRIMINAL,
-            "A2": Status.INNOCENT,
-            "D2": Status.CRIMINAL,
-        }
-        self._revealed_clues = {
-            "B2": ("Exactly 2 Criminals are in row 2.", ("A2", "B2", "C2", "D2")),
-            "A2": ("B1 and C1 have the same status.", ("B1", "C1")),
-            "D2": ("At least 1 neighbor of D2 is Innocent.", ("C1", "C2", "C3", "D1", "D3")),
-        }
+    MIN_SIZE = 3
+    MAX_SIZE = 5
+
+    def __init__(self, size: int = 4) -> None:
+        self._size = size
+        self._puzzle_name = f"GUI Demo {size}x{size}"
         self._cells: list[CellView] = []
+        self._solution: dict[str, Status] = {}
+        self._solve_order: list[str] = []
+        self._initial_revealed: tuple[str, ...] = ()
         self._step = 0
-        self._trace: list[str] = []
-        self.restart()
+        self._phase = GamePhase.READY
+        self._trace: list[TraceEntry] = []
+        self._metrics = SolverMetrics()
+        self._configure_demo(size, self._puzzle_name)
 
-    @staticmethod
-    def _make_initial_cells() -> tuple[CellView, ...]:
-        cells: list[CellView] = []
-        for index, (name, profession) in enumerate(NAMES):
-            row = index // 4 + 1
-            column = chr(ord("A") + index % 4)
-            cells.append(CellView(f"{column}{row}", name, profession))
+    def _configure_demo(self, size: int, puzzle_name: str) -> None:
+        if not self.MIN_SIZE <= size <= self.MAX_SIZE:
+            raise ValueError("GUI demo size must be between 3 and 5.")
 
-        public_clues = {
-            "A1": (
-                Status.INNOCENT,
-                "Bea and Clara have the same status.",
-                ("B1", "C1"),
-            ),
-            "D1": (
-                Status.CRIMINAL,
-                "Exactly 2 Criminals are in column D.",
-                ("D1", "D2", "D3", "D4"),
-            ),
-            "C2": (
-                Status.INNOCENT,
-                "No Criminal is in a corner.",
-                ("A1", "D1", "A4", "D4"),
-            ),
-            "D3": (
-                Status.CRIMINAL,
-                "A1 and B2 have different statuses.",
-                ("A1", "B2"),
-            ),
+        self._size = size
+        self._puzzle_name = puzzle_name
+        ids = [
+            f"{chr(ord('A') + column)}{row + 1}"
+            for row in range(size)
+            for column in range(size)
+        ]
+        self._solution = {
+            cell_id: (
+                Status.CRIMINAL
+                if (index * 2 + index // size) % 5 in (1, 3)
+                else Status.INNOCENT
+            )
+            for index, cell_id in enumerate(ids)
         }
-        for index, cell in enumerate(cells):
-            if cell.cell_id in public_clues:
-                status, clue, references = public_clues[cell.cell_id]
-                cells[index] = replace(
+
+        candidates = (
+            "A1",
+            f"{chr(ord('A') + size - 1)}1",
+            f"{chr(ord('A') + size // 2)}{size // 2 + 1}",
+            f"A{size}",
+        )
+        self._initial_revealed = tuple(dict.fromkeys(candidates))
+        self._solve_order = [cell_id for cell_id in ids if cell_id not in self._initial_revealed]
+        self._cells = []
+
+        for index, cell_id in enumerate(ids):
+            name, profession = CHARACTERS[index]
+            cell = CellView(cell_id=cell_id, name=name, profession=profession)
+            if cell_id in self._initial_revealed:
+                clue, references = self._clue_for(cell_id)
+                cell = replace(
                     cell,
                     revealed=True,
-                    status=status,
+                    status=self._solution[cell_id],
+                    clue_id=f"CLUE-{cell_id}",
                     clue_text=clue,
                     clue_references=references,
                 )
-        return tuple(cells)
+            self._cells.append(cell)
 
-    def get_public_state(self) -> GameView:
-        return GameView(
-            size=4,
-            puzzle_name="Demo 4×4 · Medium",
-            step=self._step,
-            cells=tuple(self._cells),
-            trace=tuple(self._trace),
+        self._step = 0
+        self._phase = GamePhase.ACTIVE
+        self._metrics = SolverMetrics()
+        self._trace = [
+            TraceEntry(
+                step=0,
+                message=f"Loaded {len(self._initial_revealed)} initial public clues.",
+                active_clue_ids=tuple(f"CLUE-{cell_id}" for cell_id in self._initial_revealed),
+            )
+        ]
+
+    def _coordinates(self, cell_id: str) -> tuple[int, int]:
+        return int(cell_id[1:]) - 1, ord(cell_id[0]) - ord("A")
+
+    def _neighbors(self, cell_id: str) -> tuple[str, ...]:
+        row, column = self._coordinates(cell_id)
+        result: list[str] = []
+        for row_offset in (-1, 0, 1):
+            for column_offset in (-1, 0, 1):
+                if row_offset == 0 and column_offset == 0:
+                    continue
+                next_row = row + row_offset
+                next_column = column + column_offset
+                if 0 <= next_row < self._size and 0 <= next_column < self._size:
+                    result.append(
+                        f"{chr(ord('A') + next_column)}{next_row + 1}"
+                    )
+        return tuple(result)
+
+    def _clue_for(self, cell_id: str) -> tuple[str, tuple[str, ...]]:
+        references = self._neighbors(cell_id)
+        count = sum(
+            self._solution[other] is Status.CRIMINAL for other in references
+        )
+        return (
+            f"Exactly {count} Criminal(s) are among the neighbors of {cell_id}.",
+            references,
         )
 
-    def submit_verdict(self, cell_id: str, status: Status) -> ActionResult:
-        cell_index = next(
+    def _find_cell_index(self, cell_id: str) -> int | None:
+        return next(
             (index for index, cell in enumerate(self._cells) if cell.cell_id == cell_id),
             None,
         )
+
+    def _next_forced_cell(self) -> str | None:
+        return self._solve_order[0] if self._solve_order else None
+
+    def _simulate_solver_call(self, contradicted: bool = False) -> None:
+        self._metrics = replace(
+            self._metrics,
+            sat_calls=self._metrics.sat_calls + 2,
+            decisions=self._metrics.decisions + 1,
+            propagations=self._metrics.propagations + (3 if contradicted else 5),
+            backtracks=self._metrics.backtracks + int(contradicted),
+            runtime_ms=self._metrics.runtime_ms + (0.8 if contradicted else 1.2),
+        )
+
+    def get_public_state(self) -> GameView:
+        return GameView(
+            size=self._size,
+            puzzle_name=self._puzzle_name,
+            step=self._step,
+            cells=tuple(self._cells),
+            phase=self._phase,
+            trace=tuple(self._trace),
+            metrics=self._metrics,
+        )
+
+    def submit_verdict(self, cell_id: str, status: Status) -> ActionResult:
+        cell_index = self._find_cell_index(cell_id)
         if cell_index is None:
-            return ActionResult(ActionCode.INFO, f"Unknown cell: {cell_id}")
+            return ActionResult(ActionCode.ERROR, f"Cell {cell_id} does not exist.")
+        if status is Status.UNKNOWN:
+            return ActionResult(
+                ActionCode.ERROR,
+                "UNKNOWN is an agent result, not a verdict that can be submitted.",
+                cell_id,
+            )
 
         cell = self._cells[cell_index]
         if cell.revealed:
@@ -126,76 +205,120 @@ class MockGameGateway:
                 cell_id,
             )
 
-        forced_status = self._forced.get(cell_id)
-        if forced_status is None:
+        forced_cell = self._next_forced_cell()
+        if forced_cell != cell_id:
+            self._simulate_solver_call()
             return ActionResult(
                 ActionCode.NOT_PROVABLE,
                 f"{cell_id}: neither status is forced by the current KB.",
                 cell_id,
             )
 
+        forced_status = self._solution[cell_id]
         if status is not forced_status:
+            self._simulate_solver_call(contradicted=True)
             return ActionResult(
                 ActionCode.CONTRADICTED,
                 f"{cell_id}: the opposite status is logically forced.",
                 cell_id,
             )
 
-        clue, references = self._revealed_clues[cell_id]
+        self._simulate_solver_call()
+        clue, references = self._clue_for(cell_id)
+        clue_id = f"CLUE-{cell_id}"
         self._cells[cell_index] = replace(
             cell,
             revealed=True,
             status=forced_status,
+            clue_id=clue_id,
             clue_text=clue,
             clue_references=references,
         )
+        self._solve_order.pop(0)
         self._step += 1
+        self._phase = GamePhase.SOLVED if not self._solve_order else GamePhase.ACTIVE
         self._trace.append(
-            f"Step {self._step}: {cell_id} → {forced_status.value}; clue revealed."
+            TraceEntry(
+                step=self._step,
+                message=f"{cell_id} was proved {forced_status.value}; its clue joined the KB.",
+                active_clue_ids=(clue_id,),
+                sat_queries=(f"SAT(KB and {cell_id})", f"SAT(KB and not {cell_id})"),
+                verdict=f"{cell_id} = {forced_status.value}",
+                revealed_clue_id=clue_id,
+            )
         )
-        self._forced.pop(cell_id, None)
+
+        code = ActionCode.SOLVED if self._phase is GamePhase.SOLVED else ActionCode.ACCEPTED
+        message = (
+            "All characters have been solved."
+            if code is ActionCode.SOLVED
+            else f"{cell_id}: verdict accepted. A new clue was revealed."
+        )
         return ActionResult(
-            ActionCode.ACCEPTED,
-            f"{cell_id}: verdict accepted. A new clue was revealed.",
+            code,
+            message,
             cell_id,
             revealed_clue=clue,
             highlighted_cells=references,
         )
 
     def get_hint(self) -> HintResult:
-        if "B2" in self._forced:
-            return HintResult(
-                "Review clue D3; B2 can be proved next.",
-                clue_source="D3",
-                target_cells=("D3", "A1", "B2"),
-            )
-        if self._forced:
-            target = next(iter(self._forced))
-            return HintResult(
-                f"A forced verdict is available for {target}.",
-                target_cells=(target,),
-            )
-        return HintResult("No more demo hints are available.")
+        target = self._next_forced_cell()
+        if target is None:
+            return HintResult("The puzzle is already solved.")
+
+        clue_source = next(
+            (
+                cell.cell_id
+                for cell in self._cells
+                if cell.revealed and target in cell.clue_references
+            ),
+            next((cell.cell_id for cell in self._cells if cell.revealed), None),
+        )
+        targets = tuple(dict.fromkeys((clue_source, target))) if clue_source else (target,)
+        return HintResult(
+            f"Review clue {clue_source}; {target} can be proved next."
+            if clue_source
+            else f"A forced verdict is available for {target}.",
+            clue_source=clue_source,
+            target_cells=targets,
+        )
 
     def auto_solve_step(self) -> ActionResult:
-        if not self._forced:
-            return ActionResult(ActionCode.INFO, "No forced demo verdict remains.")
-        cell_id, status = next(iter(self._forced.items()))
-        return self.submit_verdict(cell_id, status)
+        target = self._next_forced_cell()
+        if target is None:
+            if all(cell.revealed for cell in self._cells):
+                self._phase = GamePhase.SOLVED
+                return ActionResult(ActionCode.SOLVED, "All characters are solved.")
+            self._phase = GamePhase.STUCK
+            return ActionResult(
+                ActionCode.UNKNOWN,
+                "No unsolved character is logically forced by the current KB.",
+            )
+        return self.submit_verdict(target, self._solution[target])
 
     def restart(self) -> ActionResult:
-        self._cells = list(self._initial_cells)
-        self._step = 0
-        self._trace = ["Initial public clues loaded."]
-        self._forced = {
-            "B2": Status.CRIMINAL,
-            "A2": Status.INNOCENT,
-            "D2": Status.CRIMINAL,
-        }
-        return ActionResult(ActionCode.INFO, "Puzzle restarted.")
+        self._configure_demo(self._size, self._puzzle_name)
+        return ActionResult(ActionCode.INFO, "Puzzle restarted from its initial clues.")
 
     def load_puzzle(self, path: Path) -> ActionResult:
+        """Load a tiny GUI-demo configuration, not the final project format.
+
+        Expected JSON keys are ``name`` and ``size``. The real engine adapter is
+        responsible for parsing the team's official puzzle representation.
+        """
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            size = int(data["size"])
+            name = str(data.get("name") or f"GUI Demo {size}x{size}")
+            self._configure_demo(size, name)
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
+            return ActionResult(
+                ActionCode.ERROR,
+                f"Could not load {path.name}: {error}",
+            )
         return ActionResult(
             ActionCode.INFO,
-            f"Selected {path.name}. Connect this hook to the real puzzle loader.",
+            f"Loaded {path.name}. This is mock data for testing the GUI.",
         )
