@@ -4,7 +4,7 @@ GUI hoàn chỉnh và sẵn sàng tích hợp cho Project 2 môn Introduction to
 hiện tại dùng Mock Engine để nhóm có thể thiết kế, demo và kiểm thử giao diện
 trước khi Game Engine, CNF encoder, DPLL và Deductive Agent hoàn thành.
 
-## Cài đặt và chạy
+## Cài đặt và chạy trên MacOS
 
 ```bash
 python3 -m venv .venv
@@ -17,7 +17,22 @@ Python được chọn phải có Tkinter. Kiểm tra bằng:
 
 ```bash
 python3 -c "import tkinter; print(tkinter.TkVersion)"
-```
+```  
+
+## Cài đặt trên Windows  
+
+```bash
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```  
+
+## Chạy trên Windows  
+
+```bash
+.\venv\Scripts\Activate.ps1
+python main.py
+```  
 
 ## Thử các chức năng
 
