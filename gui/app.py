@@ -1,12 +1,14 @@
-"""CustomTkinter presentation layer for Griductive."""
+"""Griductive Solver GUI - Graphite & Zinc Gray Edition."""
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from tkinter import filedialog, messagebox
-from typing import Callable
+from typing import Callable, Dict
 
 import customtkinter as ctk
+from PIL import Image, ImageDraw, ImageEnhance
 
 from . import theme
 from .mock_engine import MockGameGateway
@@ -21,29 +23,393 @@ from .models import (
     TraceEntry,
 )
 
-
-ctk.set_appearance_mode("System")
+ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
+# ======================================================================
+# BẢNG MÀU GRAPHITE & ZINC GRAY (MINIMALIST)
+# ======================================================================
+theme.APP_BACKGROUND   = ("#f1f5f9", "#18181b")  # Nền Zinc Dark / Cool Light Gray
+theme.PANEL_BACKGROUND = ("#ffffff", "#27272a")  # Panel xám chì trung tính
+theme.PANEL_SOFT       = ("#e2e8f0", "#3f3f46")  # Nền mềm xám xi măng
+theme.BORDER           = ("#cbd5e1", "#52525b")  # Viền xám kim loại
 
-STATUS_PRESENTATION = {
-    Status.CRIMINAL: ("!  CRIMINAL", theme.CRIMINAL, theme.CRIMINAL_SOFT),
-    Status.INNOCENT: ("✓  INNOCENT", theme.INNOCENT, theme.INNOCENT_SOFT),
-}
-UNSOLVED_PRESENTATION = ("○  UNSOLVED", theme.TEXT_SECONDARY, theme.PANEL_SOFT)
+theme.PRIMARY          = ("#334155", "#e4e4e7")  # Bright Zinc Accent nổi bật trên xám tối
+theme.PRIMARY_HOVER    = ("#1e293b", "#f4f4f5")
+theme.PRIMARY_SOFT     = ("#e2e8f0", "#3f3f46")
+theme.PRIMARY_TEXT     = ("#ffffff", "#18181b")  # Chữ tối tương phản trên nút xám sáng
 
-PHASE_PRESENTATION = {
-    GamePhase.READY: ("READY", theme.TEXT_SECONDARY, theme.PANEL_SOFT),
-    GamePhase.ACTIVE: ("ACTIVE", theme.PRIMARY, theme.PRIMARY_SOFT),
-    GamePhase.SOLVED: ("SOLVED", theme.SUCCESS, theme.INNOCENT_SOFT),
-    GamePhase.STUCK: ("STUCK", theme.WARNING, theme.WARNING_SOFT),
-    GamePhase.INCONSISTENT: ("INCONSISTENT", theme.ERROR, theme.CRIMINAL_SOFT),
-}
+theme.INNOCENT         = ("#059669", "#34d399")  # Green Mint Accent
+theme.INNOCENT_SOFT    = ("#d1fae5", "#064e3b")
+theme.INNOCENT_HOVER   = ("#047857", "#6ee7b7")
+
+theme.CRIMINAL         = ("#e11d48", "#fb7185")  # Red Rose Accent
+theme.CRIMINAL_SOFT    = ("#ffe4e6", "#4c0519")
+theme.CRIMINAL_HOVER   = ("#be123c", "#fca5a5")
+
+theme.SUCCESS          = ("#059669", "#34d399")
+theme.WARNING          = ("#d97706", "#fbbf24")
+theme.WARNING_SOFT     = ("#fef3c7", "#451a03")
+theme.ERROR            = ("#e11d48", "#fb7185")
+
+# Màu chữ & Điểm nhấn linh hoạt (Đã nâng cấp màu Highlight Rực Rỡ)
+COLOR_TEXT_MAIN       = ("#0f172a", "#fafafa")  # Chữ trắng bạc sáng
+COLOR_TEXT_MUTED      = ("#64748b", "#a1a1aa")  # Chữ phụ xám trung tính
+COLOR_ACTIVE_SELECTED = ("#334155", "#ffffff")  # Viền chọn xám bạc
+COLOR_TARGET_PERSON   = ("#d97706", "#fbbf24")  # Vàng Amber
+COLOR_RELATION       = ("#2563eb", "#38bdf8")  # Xanh Lam Electric (Cyan) sáng bừng khi chọn neighbor
+COLOR_SCOPE          = ("#7c3aed", "#a855f7")  # Tím Neon
+
+COLOR_DIMMED_BG      = ("#cbd5e1", "#27272a")
+COLOR_DIMMED_TEXT    = ("#94a3b8", "#71717a")
+
+_AVATAR_CACHE: dict[tuple[int, int, bool], ctk.CTkImage] = {}
 
 
+def get_adjacent_neighbors(cell_id: str, max_size: int = 5) -> list[str]:
+    """Tính toán danh sách ID của 8 ô xung quanh (hàng xóm) của cell_id."""
+    col_char, row_str = cell_id[0], cell_id[1:]
+    col_idx = ord(col_char.upper()) - ord('A')
+    try:
+        row_idx = int(row_str)
+    except ValueError:
+        return []
+
+    neighbors = []
+    for dc in (-1, 0, 1):
+        for dr in (-1, 0, 1):
+            if dc == 0 and dr == 0:
+                continue
+            nc, nr = col_idx + dc, row_idx + dr
+            if 0 <= nc < max_size and 1 <= nr <= max_size:
+                neighbors.append(f"{chr(ord('A') + nc)}{nr}")
+    return neighbors
+
+
+def _draw_avatar_silhouette(color: tuple[int, int, int, int]) -> Image.Image:
+    """Tạo hình Silhouette nhân vật."""
+    img = Image.new("RGBA", (256, 256), color=(0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([88, 36, 168, 116], fill=color)
+    draw.chord([40, 130, 216, 280], start=180, end=360, fill=color)
+    return img
+
+
+def get_avatar_ctk_image(
+    size: tuple[int, int] = (64, 64),
+    dimmed: bool = False,
+    image_path: str = "avatar.png",
+) -> ctk.CTkImage:
+    """Tải Avatar hỗ trợ hiển thị sắc nét cho Gray Theme."""
+    cache_key = (size[0], size[1], dimmed)
+    if cache_key in _AVATAR_CACHE:
+        return _AVATAR_CACHE[cache_key]
+
+    path = Path(image_path)
+    if not path.exists():
+        path = Path("avatar.jpg")
+
+    if path.exists():
+        img = Image.open(path).convert("RGBA")
+        if dimmed:
+            img = ImageEnhance.Brightness(img).enhance(0.4)
+        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=size)
+    else:
+        dark_silhouette = (51, 65, 85, 230)      # Slate Slate Dark cho Light Mode
+        light_silhouette = (228, 228, 231, 230)  # Zinc Bright Silver cho Dark Mode
+
+        light_img = _draw_avatar_silhouette(dark_silhouette)
+        dark_img = _draw_avatar_silhouette(light_silhouette)
+
+        if dimmed:
+            light_img = ImageEnhance.Brightness(light_img).enhance(0.4)
+            dark_img = ImageEnhance.Brightness(dark_img).enhance(0.4)
+
+        ctk_img = ctk.CTkImage(light_image=light_img, dark_image=dark_img, size=size)
+
+    _AVATAR_CACHE[cache_key] = ctk_img
+    return ctk_img
+
+
+# ----------------------------------------------------------------------
+# IN-APP POPUP DIALOGS
+# ----------------------------------------------------------------------
+class BaseModal(ctk.CTkFrame):
+    def __init__(
+        self,
+        parent: ctk.CTk,
+        title: str = "Griductive",
+        width: int = 430,
+        height: int = 420,
+        on_cancel: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(
+            parent,
+            width=width,
+            height=height,
+            corner_radius=0,
+            fg_color=theme.PANEL_BACKGROUND,
+            border_width=2,
+            border_color=theme.PRIMARY,
+        )
+        self.app = parent
+        self.on_cancel = on_cancel
+
+        self.place(relx=0.5, rely=0.5, anchor="center")
+        self.lift()
+        self.grid_propagate(False)
+
+        close_btn = ctk.CTkButton(
+            self,
+            text="✕",
+            width=28,
+            height=28,
+            corner_radius=0,
+            fg_color="transparent",
+            hover_color=theme.PANEL_SOFT,
+            text_color=COLOR_TEXT_MUTED,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self.close,
+        )
+        close_btn.place(relx=0.96, rely=0.04, anchor="ne")
+
+        self._click_binding = self.app.bind("<Button-1>", self._on_outside_click, add="+")
+
+    def _on_outside_click(self, event) -> None:
+        if not self.winfo_exists():
+            return
+        x1 = self.winfo_rootx()
+        y1 = self.winfo_rooty()
+        x2 = x1 + self.winfo_width()
+        y2 = y1 + self.winfo_height()
+        if not (x1 <= event.x_root <= x2 and y1 <= event.y_root <= y2):
+            self.close()
+
+    def close(self) -> None:
+        if hasattr(self, "_click_binding") and self._click_binding:
+            try:
+                self.app.unbind("<Button-1>", self._click_binding)
+            except Exception:
+                pass
+        if hasattr(self.app, "suppress_clicks_temporarily"):
+            self.app.suppress_clicks_temporarily(150)
+        if self.on_cancel:
+            self.on_cancel()
+        self.destroy()
+
+
+class VerdictDialog(BaseModal):
+    def __init__(
+        self,
+        parent: ctk.CTk,
+        cell: CellView,
+        on_submit: Callable[[Status], None],
+        on_cancel: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(
+            parent,
+            title=f"Verdict - {cell.name}",
+            width=430,
+            height=420,
+            on_cancel=on_cancel,
+        )
+        self.cell = cell
+        self.on_submit = on_submit
+
+        self.grid_columnconfigure(0, weight=1)
+
+        avatar_img = get_avatar_ctk_image(size=(64, 64))
+        avatar = ctk.CTkLabel(
+            self,
+            image=avatar_img,
+            text="",
+            width=64,
+            height=64,
+            corner_radius=0,
+            fg_color="transparent",
+        )
+        avatar.grid(row=0, column=0, pady=(20, 6))
+
+        name_label = ctk.CTkLabel(
+            self,
+            text=cell.name,
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+        )
+        name_label.grid(row=1, column=0, pady=(0, 2))
+
+        meta_label = ctk.CTkLabel(
+            self,
+            text=f"{cell.cell_id}  ·  {cell.profession}",
+            font=ctk.CTkFont(size=13),
+            text_color=COLOR_TEXT_MUTED,
+        )
+        meta_label.grid(row=2, column=0, pady=(0, 14))
+
+        heading_label = ctk.CTkLabel(
+            self,
+            text="Innocent or criminal?",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+        )
+        heading_label.grid(row=3, column=0, pady=(0, 6))
+
+        desc_text = (
+            "You can only lock a verdict the clues actually prove — "
+            "a correct call flips them and reveals their statement."
+        )
+        desc_label = ctk.CTkLabel(
+            self,
+            text=textwrap.fill(desc_text, width=42),
+            font=ctk.CTkFont(size=12),
+            text_color=COLOR_TEXT_MUTED,
+            justify="center",
+        )
+        desc_label.grid(row=4, column=0, pady=(0, 18), padx=20)
+
+        buttons_frame = ctk.CTkFrame(self, fg_color="transparent")
+        buttons_frame.grid(row=5, column=0, padx=24, pady=(0, 10), sticky="ew")
+        buttons_frame.grid_columnconfigure((0, 1), weight=1)
+
+        self.innocent_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Innocent",
+            height=44,
+            corner_radius=0,
+            fg_color=theme.INNOCENT_SOFT,
+            hover_color=theme.INNOCENT_HOVER,
+            text_color=theme.INNOCENT,
+            border_width=1,
+            border_color=theme.INNOCENT,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=lambda: self._choose(Status.INNOCENT),
+        )
+        self.innocent_btn.grid(row=0, column=0, padx=(0, 6), sticky="ew")
+
+        self.criminal_btn = ctk.CTkButton(
+            buttons_frame,
+            text="Criminal",
+            height=44,
+            corner_radius=0,
+            fg_color=theme.CRIMINAL_SOFT,
+            hover_color=theme.CRIMINAL_HOVER,
+            text_color=theme.CRIMINAL,
+            border_width=1,
+            border_color=theme.CRIMINAL,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=lambda: self._choose(Status.CRIMINAL),
+        )
+        self.criminal_btn.grid(row=0, column=1, padx=(6, 0), sticky="ew")
+
+        cancel_btn = ctk.CTkButton(
+            self,
+            text="Cancel",
+            fg_color="transparent",
+            hover_color=theme.PANEL_SOFT,
+            text_color=COLOR_TEXT_MUTED,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=self.close,
+        )
+        cancel_btn.grid(row=6, column=0, pady=(0, 14))
+
+    def _choose(self, status: Status) -> None:
+        callback = self.on_submit
+        self.on_cancel = None
+        self.close()
+        if callback:
+            callback(status)
+
+
+class ConclusionNotPossibleDialog(BaseModal):
+    def __init__(
+        self,
+        parent: ctk.CTk,
+        cell: CellView,
+        attempted_status: Status,
+        message: str | None = None,
+        on_cancel: Callable[[], None] | None = None,
+    ) -> None:
+        super().__init__(
+            parent,
+            title="Conclusion Not Possible",
+            width=440,
+            height=380,
+            on_cancel=on_cancel,
+        )
+
+        self.grid_columnconfigure(0, weight=1)
+
+        icon_badge = ctk.CTkLabel(
+            self,
+            text="⚠️",
+            width=56,
+            height=56,
+            corner_radius=0,
+            fg_color=theme.WARNING_SOFT,
+            font=ctk.CTkFont(size=24),
+        )
+        icon_badge.grid(row=0, column=0, pady=(20, 8))
+
+        title_label = ctk.CTkLabel(
+            self,
+            text="Conclusion Not Possible",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+        )
+        title_label.grid(row=1, column=0, pady=(0, 10))
+
+        if message:
+            main_text = message
+            sub_text = "Unlock more testimony first, or lean on a hint."
+        else:
+            attempted_str = "criminal" if attempted_status == Status.CRIMINAL else "innocent"
+            opposite_str = "innocent" if attempted_status == Status.CRIMINAL else "criminal"
+            name = cell.name or cell.cell_id
+
+            main_text = (
+                f"You can't prove {name} is {attempted_str} from the statements "
+                f"you've unlocked yet — there's still a consistent case where {name} is {opposite_str}."
+            )
+            sub_text = "Unlock more testimony first, or lean on a hint."
+
+        desc_label = ctk.CTkLabel(
+            self,
+            text=main_text,
+            font=ctk.CTkFont(size=13),
+            text_color=COLOR_TEXT_MAIN,
+            justify="center",
+            wraplength=380,
+        )
+        desc_label.grid(row=2, column=0, pady=(0, 10), padx=24)
+
+        advice_label = ctk.CTkLabel(
+            self,
+            text=sub_text,
+            font=ctk.CTkFont(size=13),
+            text_color=COLOR_TEXT_MUTED,
+            justify="center",
+            wraplength=380,
+        )
+        advice_label.grid(row=3, column=0, pady=(0, 18), padx=24)
+
+        keep_looking_btn = ctk.CTkButton(
+            self,
+            text="Keep looking",
+            height=44,
+            corner_radius=0,
+            fg_color=theme.PRIMARY,
+            hover_color=theme.PRIMARY_HOVER,
+            text_color=theme.PRIMARY_TEXT,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            command=self.close,
+        )
+        keep_looking_btn.grid(row=4, column=0, padx=24, pady=(0, 16), sticky="ew")
+
+
+# ----------------------------------------------------------------------
+# CHARACTER CARD
+# ----------------------------------------------------------------------
 class CharacterCard(ctk.CTkFrame):
-    """One public card. It never receives a hidden solution from the engine."""
-
     def __init__(
         self,
         master: ctk.CTkBaseClass,
@@ -51,127 +417,239 @@ class CharacterCard(ctk.CTkFrame):
         on_select: Callable[[str], None],
         on_clue_select: Callable[[str], None],
     ) -> None:
-        # Keep the border width constant. Changing it when a card is selected
-        # changes the widget's requested size and makes Tk recalculate the
-        # complete grid, which looks like the neighboring cards are jumping.
-        super().__init__(master, corner_radius=14, border_width=3)
+        super().__init__(master, corner_radius=0, border_width=1)
         self.cell = cell
         self.on_select = on_select
         self.on_clue_select = on_clue_select
+
         self._base_surface = theme.PANEL_BACKGROUND
+        self._base_border = theme.BORDER
+
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.card_button = ctk.CTkButton(
+        self.id_label = ctk.CTkLabel(
             self,
-            text="",
-            command=lambda: self.on_select(self.cell.cell_id),
+            text=cell.cell_id,
+            font=ctk.CTkFont(size=10, weight="bold"),
+            text_color=COLOR_TEXT_MUTED,
             fg_color="transparent",
-            hover_color=theme.PANEL_SOFT,
-            anchor="w",
-            corner_radius=10,
-            height=82,
-            font=ctk.CTkFont(size=12),
         )
-        self.card_button.grid(row=0, column=0, padx=5, pady=(5, 2), sticky="nsew")
+        self.id_label.place(x=6, y=4, anchor="nw")
 
-        self.clue_button = ctk.CTkButton(
-            self,
+        self.unrevealed_frame = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        self.unrevealed_frame.grid_columnconfigure(0, weight=1)
+        self.unrevealed_frame.grid_rowconfigure((0, 1, 2), weight=1)
+
+        self.unrevealed_avatar = ctk.CTkLabel(
+            self.unrevealed_frame,
+            image=get_avatar_ctk_image(size=(48, 48)),
             text="",
-            command=lambda: self.on_clue_select(self.cell.cell_id),
             fg_color="transparent",
-            hover_color=theme.PANEL_SOFT,
-            text_color=theme.TEXT_SECONDARY,
-            anchor="w",
-            corner_radius=8,
-            height=28,
-            font=ctk.CTkFont(size=10),
         )
-        self.clue_button.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+        self.unrevealed_avatar.grid(row=0, column=0, pady=(12, 2))
+
+        self.unrevealed_name = ctk.CTkLabel(
+            self.unrevealed_frame,
+            text="",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+            anchor="center",
+        )
+        self.unrevealed_name.grid(row=1, column=0, pady=(0, 1))
+
+        self.unrevealed_prof = ctk.CTkLabel(
+            self.unrevealed_frame,
+            text="",
+            font=ctk.CTkFont(size=10),
+            text_color=COLOR_TEXT_MUTED,
+            anchor="center",
+        )
+        self.unrevealed_prof.grid(row=2, column=0, pady=(0, 8))
+
+        self.revealed_frame = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        self.revealed_frame.grid_columnconfigure(0, weight=1)
+        self.revealed_frame.grid_rowconfigure(1, weight=1)
+
+        header_rev = ctk.CTkFrame(self.revealed_frame, fg_color="transparent", corner_radius=0)
+        header_rev.grid(row=0, column=0, pady=(4, 1), padx=(22, 6), sticky="e")
+
+        self.revealed_avatar = ctk.CTkLabel(
+            header_rev,
+            image=get_avatar_ctk_image(size=(20, 20)),
+            text="",
+            fg_color="transparent",
+        )
+        self.revealed_avatar.grid(row=0, column=0, rowspan=2, padx=(0, 4))
+
+        self.revealed_name = ctk.CTkLabel(
+            header_rev,
+            text="",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+            anchor="w",
+        )
+        self.revealed_name.grid(row=0, column=1, sticky="w")
+
+        self.revealed_prof = ctk.CTkLabel(
+            header_rev,
+            text="",
+            font=ctk.CTkFont(size=9),
+            text_color=COLOR_TEXT_MUTED,
+            anchor="w",
+        )
+        self.revealed_prof.grid(row=1, column=1, sticky="w")
+
+        self.clue_label = ctk.CTkLabel(
+            self.revealed_frame,
+            text="",
+            font=ctk.CTkFont(size=9, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+            justify="center",
+            anchor="center",
+        )
+        self.clue_label.grid(row=1, column=0, padx=4, pady=(1, 4), sticky="nsew")
+
+        self._bind_card_clicks(self)
+
+    def _bind_card_clicks(self, widget: ctk.CTkBaseClass) -> None:
+        widget.bind("<Button-1>", lambda _e: self._handle_card_click())
+        for child in widget.winfo_children():
+            self._bind_card_clicks(child)
+
+    def _handle_card_click(self) -> None:
+        if self.cell.revealed:
+            self.on_clue_select(self.cell.cell_id)
+        else:
+            self.on_select(self.cell.cell_id)
 
     def update_view(
         self,
         cell: CellView,
         *,
         selected: bool,
-        highlighted: bool,
+        highlight_color: str | None,
+        is_dimmed: bool,
+        board_size: int = 5,
     ) -> None:
         self.cell = cell
+        self.id_label.configure(text=cell.cell_id)
+
+        if board_size >= 5:
+            av_unrev, av_rev = (42, 42), (18, 18)
+            f_name_unrev, f_prof_unrev = 11, 9
+            f_name_rev, f_prof_rev, f_clue = 10, 8, 9
+            fixed_wraplength = 135
+        else:
+            av_unrev, av_rev = (52, 52), (22, 22)
+            f_name_unrev, f_prof_unrev = 13, 10
+            f_name_rev, f_prof_rev, f_clue = 11, 9, 10
+            fixed_wraplength = 175
+
+        self.unrevealed_avatar.configure(image=get_avatar_ctk_image(size=av_unrev, dimmed=is_dimmed))
+        self.revealed_avatar.configure(image=get_avatar_ctk_image(size=av_rev, dimmed=is_dimmed))
+
+        self.unrevealed_name.configure(font=ctk.CTkFont(size=f_name_unrev, weight="bold"))
+        self.unrevealed_prof.configure(font=ctk.CTkFont(size=f_prof_unrev))
+        self.revealed_name.configure(font=ctk.CTkFont(size=f_name_rev, weight="bold"))
+        self.revealed_prof.configure(font=ctk.CTkFont(size=f_prof_rev))
+
         if cell.revealed:
-            status_text, status_color, surface = STATUS_PRESENTATION[cell.status]
-            clue_preview = cell.clue_text or "Revealed clue"
-            # Keep previews compact so newly revealed text cannot change a
-            # column's requested width. The complete clue remains available
-            # in the detail panel.
-            if len(clue_preview) > 18:
-                clue_preview = clue_preview[:15] + "..."
-            self.clue_button.configure(
-                text=f"Clue · {clue_preview}",
-                state="normal",
-                text_color=status_color,
+            if cell.status == Status.INNOCENT:
+                self._base_surface = theme.INNOCENT_SOFT
+                self._base_border = theme.INNOCENT
+            else:
+                self._base_surface = theme.CRIMINAL_SOFT
+                self._base_border = theme.CRIMINAL
+
+            self.unrevealed_frame.grid_forget()
+            self.revealed_frame.grid(row=0, column=0, sticky="nsew", padx=1, pady=1)
+
+            self.revealed_name.configure(text=cell.name)
+            self.revealed_prof.configure(text=cell.profession)
+
+            self.clue_label.configure(
+                text=cell.clue_text or "Revealed clue",
+                font=ctk.CTkFont(size=f_clue, weight="bold"),
+                wraplength=fixed_wraplength,
             )
         else:
-            status_text, status_color, surface = UNSOLVED_PRESENTATION
-            self.clue_button.configure(
-                text="Face-down clue",
-                state="disabled",
-                text_color=theme.TEXT_SECONDARY,
-            )
+            self._base_surface = theme.PANEL_BACKGROUND
+            self._base_border = theme.BORDER
 
-        self.card_button.configure(
-            text=f"{cell.cell_id}\n{cell.name}\n{cell.profession}\n{status_text}",
-            text_color=theme.TEXT_PRIMARY,
-        )
+            self.revealed_frame.grid_forget()
+            self.unrevealed_frame.grid(row=0, column=0, sticky="nsew", padx=1, pady=1)
 
-        self._base_surface = surface
-        self.update_style(selected=selected, highlighted=highlighted)
+            self.unrevealed_name.configure(text=cell.name)
+            self.unrevealed_prof.configure(text=cell.profession)
 
-    def update_style(self, *, selected: bool, highlighted: bool) -> None:
-        """Update selection/highlight colors without touching card content."""
+        self.id_label.lift()
+        self.update_style(selected=selected, highlight_color=highlight_color, is_dimmed=is_dimmed)
 
-        surface = self._base_surface
-        border_color = theme.BORDER
-        if highlighted:
-            surface = theme.HIGHLIGHT_SOFT
-            border_color = theme.HIGHLIGHT
-        if selected:
-            border_color = theme.PRIMARY
+    def update_style(self, *, selected: bool, highlight_color: str | None, is_dimmed: bool) -> None:
+        if is_dimmed:
+            surface = COLOR_DIMMED_BG
+            border_color = theme.BORDER
+            text_color = COLOR_DIMMED_TEXT
+            border_width = 1
+        else:
+            surface = self._base_surface
+            border_color = self._base_border
+            text_color = COLOR_TEXT_MAIN
+            border_width = 1
 
-        self.configure(
-            fg_color=surface,
-            border_color=border_color,
-            border_width=3,
-        )
+            if highlight_color:
+                border_color = highlight_color
+                border_width = 3  # Tăng lên 3px để viền highlight sáng rực rõ ràng hơn
+
+            if selected:
+                border_color = COLOR_ACTIVE_SELECTED
+                border_width = 3
+
+        self.configure(fg_color=surface, border_color=border_color, border_width=border_width)
+
+        self.unrevealed_name.configure(text_color=text_color)
+        self.unrevealed_prof.configure(text_color=text_color if not is_dimmed else COLOR_DIMMED_TEXT)
+        self.revealed_name.configure(text_color=text_color)
+        self.revealed_prof.configure(text_color=text_color if not is_dimmed else COLOR_DIMMED_TEXT)
+        self.clue_label.configure(text_color=text_color)
+        self.id_label.configure(text_color=text_color if not is_dimmed else COLOR_DIMMED_TEXT)
 
 
+# ----------------------------------------------------------------------
+# MAIN APPLICATION GUI
+# ----------------------------------------------------------------------
 class GriductiveApp(ctk.CTk):
-    """GUI shell that can run with either the mock or a real gateway adapter."""
-
     AUTO_DELAY_MS = 450
 
     def __init__(self, gateway: GameGateway | None = None) -> None:
         super().__init__(fg_color=theme.APP_BACKGROUND)
+        _AVATAR_CACHE.clear()
         self.gateway = gateway or MockGameGateway()
         self.game_view: GameView = self.gateway.get_public_state()
         self.selected_cell_id: str | None = None
-        self.highlighted_cells: set[str] = set()
+        self.highlighted_color_map: Dict[str, str] = {}
         self.cards: dict[str, CharacterCard] = {}
-        self.clue_menu_lookup: dict[str, str] = {}
+        self.metric_labels: dict[str, ctk.CTkLabel] = {}
         self.auto_running = False
         self.auto_after_id: str | None = None
+        self._ignore_clicks = False
 
-        self.title("Griductive Solver")
-        self.geometry("1320x860")
-        self.minsize(1040, 720)
+        self.title("Griductive Solver - Graphite Gray Edition")
+        self.geometry("1380x880")
+        self.minsize(1080, 740)
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         self._build_header()
         self._build_content()
-        self._build_footer()
         self._bind_shortcuts()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._refresh_all()
+
+    def suppress_clicks_temporarily(self, ms: int = 150) -> None:
+        self._ignore_clicks = True
+        self.after(ms, lambda: setattr(self, "_ignore_clicks", False))
 
     def _build_header(self) -> None:
         header = ctk.CTkFrame(
@@ -188,7 +666,7 @@ class GriductiveApp(ctk.CTk):
             text="G",
             width=42,
             height=42,
-            corner_radius=12,
+            corner_radius=0,
             fg_color=theme.PRIMARY,
             text_color=theme.PRIMARY_TEXT,
             font=ctk.CTkFont(size=21, weight="bold"),
@@ -200,13 +678,13 @@ class GriductiveApp(ctk.CTk):
         ctk.CTkLabel(
             title_frame,
             text="Griductive Solver",
-            text_color=theme.TEXT_PRIMARY,
+            text_color=COLOR_TEXT_MAIN,
             font=ctk.CTkFont(size=19, weight="bold"),
         ).pack(anchor="w")
         self.puzzle_label = ctk.CTkLabel(
             title_frame,
             text="",
-            text_color=theme.TEXT_SECONDARY,
+            text_color=COLOR_TEXT_MUTED,
             font=ctk.CTkFont(size=12),
         )
         self.puzzle_label.pack(anchor="w")
@@ -215,45 +693,53 @@ class GriductiveApp(ctk.CTk):
         controls.grid(row=0, column=2, padx=18, pady=14, sticky="e")
         self.appearance_menu = ctk.CTkOptionMenu(
             controls,
-            values=["System", "Light", "Dark"],
-            command=ctk.set_appearance_mode,
+            values=["Dark", "Light"],
+            command=self._change_appearance_mode,
             width=100,
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             button_color=theme.PRIMARY,
-            text_color=theme.TEXT_PRIMARY,
+            button_hover_color=theme.PRIMARY_HOVER,
+            text_color=COLOR_TEXT_MAIN,
         )
-        self.appearance_menu.set("System")
+        self.appearance_menu.set("Dark")
         self.appearance_menu.pack(side="left", padx=(0, 8))
         ctk.CTkButton(
             controls,
             text="Load JSON",
             width=94,
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             hover_color=theme.BORDER,
-            text_color=theme.TEXT_PRIMARY,
+            text_color=COLOR_TEXT_MAIN,
             command=self._load_puzzle,
         ).pack(side="left", padx=4)
         ctk.CTkButton(
             controls,
             text="Restart",
             width=84,
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             hover_color=theme.BORDER,
-            text_color=theme.TEXT_PRIMARY,
+            text_color=COLOR_TEXT_MAIN,
             command=self._restart,
         ).pack(side="left", padx=4)
+
+    def _change_appearance_mode(self, mode: str) -> None:
+        ctk.set_appearance_mode(mode)
+        self._refresh_all()
 
     def _build_content(self) -> None:
         content = ctk.CTkFrame(self, fg_color="transparent")
         content.grid(row=1, column=0, padx=18, pady=18, sticky="nsew")
         content.grid_rowconfigure(0, weight=1)
-        content.grid_columnconfigure(0, weight=3)
-        content.grid_columnconfigure(1, weight=1, minsize=330)
+        content.grid_columnconfigure(0, weight=1)
+        content.grid_columnconfigure(1, weight=0)
 
         self.board_panel = ctk.CTkFrame(
             content,
             fg_color=theme.PANEL_BACKGROUND,
-            corner_radius=16,
+            corner_radius=0,
             border_width=1,
             border_color=theme.BORDER,
         )
@@ -267,13 +753,13 @@ class GriductiveApp(ctk.CTk):
         ctk.CTkLabel(
             board_head,
             text="Public Board",
-            text_color=theme.TEXT_PRIMARY,
+            text_color=COLOR_TEXT_MAIN,
             font=ctk.CTkFont(size=16, weight="bold"),
         ).grid(row=0, column=0, sticky="w")
         self.phase_label = ctk.CTkLabel(
             board_head,
             text="",
-            corner_radius=10,
+            corner_radius=0,
             width=92,
             height=26,
             font=ctk.CTkFont(size=11, weight="bold"),
@@ -283,25 +769,27 @@ class GriductiveApp(ctk.CTk):
             board_head,
             text="",
             fg_color=theme.PANEL_SOFT,
-            text_color=theme.TEXT_SECONDARY,
-            corner_radius=10,
+            text_color=COLOR_TEXT_MUTED,
+            corner_radius=0,
             width=178,
             height=26,
         )
         self.progress_label.grid(row=0, column=2, sticky="e")
         self.progress_bar = ctk.CTkProgressBar(
             board_head,
-            height=7,
+            height=6,
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             progress_color=theme.PRIMARY,
         )
         self.progress_bar.grid(row=1, column=0, columnspan=3, pady=(10, 0), sticky="ew")
 
         self.board = ctk.CTkFrame(self.board_panel, fg_color="transparent")
-        self.board.grid(row=1, column=0, padx=14, pady=(0, 14), sticky="nsew")
+        self.board.grid(row=1, column=0, padx=12, pady=(0, 12), sticky="nsew")
 
         self.sidebar = ctk.CTkScrollableFrame(
             content,
+            width=380,
             fg_color="transparent",
             scrollbar_button_color=theme.BORDER,
         )
@@ -313,7 +801,7 @@ class GriductiveApp(ctk.CTk):
         panel = ctk.CTkFrame(
             self.sidebar,
             fg_color=theme.PANEL_BACKGROUND,
-            corner_radius=14,
+            corner_radius=0,
             border_width=1,
             border_color=theme.BORDER,
         )
@@ -322,168 +810,104 @@ class GriductiveApp(ctk.CTk):
         ctk.CTkLabel(
             panel,
             text=title,
-            text_color=theme.TEXT_PRIMARY,
-            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=COLOR_TEXT_MAIN,
+            font=ctk.CTkFont(size=15, weight="bold"),
         ).grid(row=0, column=0, padx=14, pady=(12, 6), sticky="w")
         return panel
 
     def _build_sidebar(self) -> None:
-        detail = self._panel(0, "Selected character")
-        self.selected_title = ctk.CTkLabel(
-            detail,
-            text="Select a card",
-            text_color=theme.TEXT_PRIMARY,
-            font=ctk.CTkFont(size=17, weight="bold"),
-        )
-        self.selected_title.grid(row=1, column=0, padx=14, sticky="w")
-        self.selected_meta = ctk.CTkLabel(detail, text="", text_color=theme.TEXT_SECONDARY)
-        self.selected_meta.grid(row=2, column=0, padx=14, pady=(2, 6), sticky="w")
-        self.selected_status = ctk.CTkLabel(
-            detail,
-            text=UNSOLVED_PRESENTATION[0],
-            fg_color=theme.PANEL_SOFT,
-            text_color=theme.TEXT_SECONDARY,
-            corner_radius=10,
-            width=126,
-            height=30,
-        )
-        self.selected_status.grid(row=3, column=0, padx=14, pady=(0, 8), sticky="w")
-        self.clue_text = ctk.CTkTextbox(
-            detail,
-            height=78,
-            wrap="word",
-            fg_color=theme.PANEL_SOFT,
-            border_width=0,
-            text_color=theme.TEXT_PRIMARY,
-        )
-        self.clue_text.grid(row=4, column=0, padx=14, pady=(0, 14), sticky="ew")
-        self.clue_text.configure(state="disabled")
-
-        verdict = self._panel(1, "Submit verdict")
-        ctk.CTkLabel(
-            verdict,
-            text="Only submit when the current KB proves a status.",
-            text_color=theme.TEXT_SECONDARY,
-            font=ctk.CTkFont(size=11),
-        ).grid(row=1, column=0, padx=14, pady=(0, 7), sticky="w")
-        buttons = ctk.CTkFrame(verdict, fg_color="transparent")
-        buttons.grid(row=2, column=0, padx=14, pady=(0, 14), sticky="ew")
-        buttons.grid_columnconfigure((0, 1), weight=1)
-        self.criminal_button = ctk.CTkButton(
-            buttons,
-            text="!  Criminal",
-            fg_color=theme.CRIMINAL_SOFT,
-            hover_color=theme.CRIMINAL_HOVER,
-            text_color=theme.CRIMINAL,
-            command=lambda: self._submit_verdict(Status.CRIMINAL),
-        )
-        self.criminal_button.grid(row=0, column=0, padx=(0, 4), sticky="ew")
-        self.innocent_button = ctk.CTkButton(
-            buttons,
-            text="✓  Innocent",
-            fg_color=theme.INNOCENT_SOFT,
-            hover_color=theme.INNOCENT_HOVER,
-            text_color=theme.INNOCENT,
-            command=lambda: self._submit_verdict(Status.INNOCENT),
-        )
-        self.innocent_button.grid(row=0, column=1, padx=(4, 0), sticky="ew")
-
-        clues = self._panel(2, "Revealed clue browser")
-        self.clue_menu = ctk.CTkOptionMenu(
-            clues,
-            values=["No revealed clues"],
-            command=self._select_clue_from_menu,
-            fg_color=theme.PANEL_SOFT,
-            button_color=theme.PRIMARY,
-            text_color=theme.TEXT_PRIMARY,
-        )
-        self.clue_menu.grid(row=1, column=0, padx=14, pady=(0, 14), sticky="ew")
-
-        solver = self._panel(3, "Deduction controls")
+        solver = self._panel(0, "Deduction controls")
         solver_buttons = ctk.CTkFrame(solver, fg_color="transparent")
         solver_buttons.grid(row=1, column=0, padx=14, pady=(0, 14), sticky="ew")
         solver_buttons.grid_columnconfigure((0, 1), weight=1)
+
         self.hint_button = ctk.CTkButton(
             solver_buttons,
             text="Hint",
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             hover_color=theme.BORDER,
-            text_color=theme.TEXT_PRIMARY,
+            text_color=COLOR_TEXT_MAIN,
             command=self._show_hint,
         )
         self.hint_button.grid(row=0, column=0, padx=(0, 4), pady=(0, 8), sticky="ew")
+
         self.step_button = ctk.CTkButton(
             solver_buttons,
             text="Next Step",
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             hover_color=theme.BORDER,
-            text_color=theme.TEXT_PRIMARY,
+            text_color=COLOR_TEXT_MAIN,
             command=self._solve_one_step,
         )
         self.step_button.grid(row=0, column=1, padx=(4, 0), pady=(0, 8), sticky="ew")
+
         self.auto_button = ctk.CTkButton(
             solver_buttons,
             text="▶  Auto Solve",
+            corner_radius=0,
             fg_color=theme.PRIMARY,
             hover_color=theme.PRIMARY_HOVER,
             text_color=theme.PRIMARY_TEXT,
+            font=ctk.CTkFont(weight="bold"),
             command=self._toggle_auto_solve,
         )
         self.auto_button.grid(row=1, column=0, columnspan=2, sticky="ew")
 
-        metrics = self._panel(4, "Solver metrics")
-        self.metrics_label = ctk.CTkLabel(
-            metrics,
-            text="",
-            justify="left",
-            anchor="w",
-            text_color=theme.TEXT_SECONDARY,
-            font=ctk.CTkFont(family="Courier", size=11),
-        )
-        self.metrics_label.grid(row=1, column=0, padx=14, pady=(0, 14), sticky="ew")
+        metrics = self._panel(1, "Solver metrics")
+        metrics_grid = ctk.CTkFrame(metrics, fg_color="transparent")
+        metrics_grid.grid(row=1, column=0, padx=12, pady=(0, 14), sticky="ew")
 
-        trace = self._panel(5, "Deduction trace")
+        items = [
+            ("SAT", "sat"),
+            ("Decisions", "dec"),
+            ("Propagation", "prop"),
+            ("Backtrack", "back"),
+            ("Time", "time"),
+        ]
+
+        for idx, (title, key) in enumerate(items):
+            metrics_grid.grid_columnconfigure(idx, weight=1)
+
+            card = ctk.CTkFrame(
+                metrics_grid,
+                fg_color=theme.PANEL_SOFT,
+                corner_radius=0,
+            )
+            card.grid(row=0, column=idx, padx=2, sticky="ew")
+            card.grid_columnconfigure(0, weight=1)
+
+            title_lbl = ctk.CTkLabel(
+                card,
+                text=title,
+                font=ctk.CTkFont(size=9),
+                text_color=COLOR_TEXT_MUTED,
+            )
+            title_lbl.grid(row=0, column=0, pady=(6, 0))
+
+            val_lbl = ctk.CTkLabel(
+                card,
+                text="0",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                text_color=COLOR_TEXT_MAIN,
+            )
+            val_lbl.grid(row=1, column=0, pady=(0, 6))
+
+            self.metric_labels[key] = val_lbl
+
+        trace = self._panel(2, "Deduction trace")
         self.trace_text = ctk.CTkTextbox(
             trace,
-            height=180,
-            wrap="word",
+            height=380,
+            wrap="none",
+            corner_radius=0,
             fg_color=theme.PANEL_SOFT,
-            text_color=theme.TEXT_PRIMARY,
-            font=ctk.CTkFont(size=11),
+            text_color=COLOR_TEXT_MAIN,
+            font=ctk.CTkFont(family="Consolas", size=11),
         )
         self.trace_text.grid(row=1, column=0, padx=14, pady=(0, 14), sticky="ew")
         self.trace_text.configure(state="disabled")
-
-    def _build_footer(self) -> None:
-        footer = ctk.CTkFrame(self, fg_color=theme.PANEL_BACKGROUND, corner_radius=0)
-        footer.grid(row=2, column=0, sticky="ew")
-        footer.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(
-            footer,
-            text="● Criminal    ● Innocent    ○ Unsolved    ◆ Highlighted",
-            text_color=theme.TEXT_SECONDARY,
-            font=ctk.CTkFont(size=11),
-        ).grid(row=0, column=0, padx=18, pady=10, sticky="w")
-        feedback = ctk.CTkFrame(footer, fg_color="transparent")
-        feedback.grid(row=0, column=1, padx=18, pady=8, sticky="e")
-        self.feedback_code = ctk.CTkLabel(
-            feedback,
-            text="READY",
-            fg_color=theme.PANEL_SOFT,
-            text_color=theme.TEXT_SECONDARY,
-            corner_radius=8,
-            width=96,
-            height=25,
-            font=ctk.CTkFont(size=10, weight="bold"),
-        )
-        self.feedback_code.pack(side="left", padx=(0, 8))
-        self.feedback_label = ctk.CTkLabel(
-            feedback,
-            text="Public knowledge only",
-            text_color=theme.TEXT_SECONDARY,
-            anchor="e",
-        )
-        self.feedback_label.pack(side="left")
 
     def _build_board(self) -> None:
         for widget in self.board.winfo_children():
@@ -494,52 +918,34 @@ class GriductiveApp(ctk.CTk):
         previous_size = getattr(self, "_configured_board_size", 0)
         configured_size = max(previous_size, size)
 
-        # Clear old grid weights first. This matters when loading a smaller
-        # puzzle after a larger one; otherwise invisible columns keep space.
-        for column in range(configured_size + 1):
+        for column in range(configured_size):
             self.board.grid_columnconfigure(column, weight=0, uniform="")
-        for row in range(configured_size + 1):
+        for row in range(configured_size):
             self.board.grid_rowconfigure(row, weight=0, uniform="")
 
-        self.board.grid_columnconfigure(0, weight=0)
-        self.board.grid_rowconfigure(0, weight=0)
-        for column in range(1, size + 1):
+        for column in range(size):
             self.board.grid_columnconfigure(column, weight=1, uniform="card_columns")
-        for row in range(1, size + 1):
+        for row in range(size):
             self.board.grid_rowconfigure(row, weight=1, uniform="card_rows")
         self._configured_board_size = size
 
-        for column in range(size):
-            ctk.CTkLabel(
-                self.board,
-                text=chr(ord("A") + column),
-                text_color=theme.TEXT_SECONDARY,
-                font=ctk.CTkFont(weight="bold"),
-            ).grid(row=0, column=column + 1, pady=(0, 4))
-
         cells_by_id = {cell.cell_id: cell for cell in self.game_view.cells}
-        for row in range(1, size + 1):
-            ctk.CTkLabel(
-                self.board,
-                text=str(row),
-                width=24,
-                text_color=theme.TEXT_SECONDARY,
-                font=ctk.CTkFont(weight="bold"),
-            ).grid(row=row, column=0, padx=(0, 4))
+        for row_idx in range(size):
+            row = row_idx + 1
             for column in range(size):
                 cell_id = f"{chr(ord('A') + column)}{row}"
                 cell = cells_by_id.get(cell_id)
                 if cell is None:
                     continue
                 card = CharacterCard(self.board, cell, self._select_cell, self._select_clue)
-                card.grid(row=row, column=column + 1, padx=5, pady=5, sticky="nsew")
+                pad_val = 3 if size >= 5 else 5
+                card.grid(row=row_idx, column=column, padx=pad_val, pady=pad_val, sticky="nsew")
                 self.cards[cell_id] = card
 
     def _refresh_all(self, *, rebuild_board: bool = False) -> None:
-        """Refresh after the logical game state has actually changed."""
-
         previous_size = getattr(self, "_rendered_size", None)
         self.game_view = self.gateway.get_public_state()
+
         if rebuild_board or previous_size != self.game_view.size or not self.cards:
             self._build_board()
             self._rendered_size = self.game_view.size
@@ -556,33 +962,54 @@ class GriductiveApp(ctk.CTk):
             else 0
         )
         self.progress_bar.set(progress)
-        phase_text, phase_color, phase_surface = PHASE_PRESENTATION[self.game_view.phase]
+
+        phase_map = {
+            GamePhase.READY: ("READY", COLOR_TEXT_MUTED, theme.PANEL_SOFT),
+            GamePhase.ACTIVE: ("ACTIVE", theme.PRIMARY, theme.PANEL_SOFT),
+            GamePhase.SOLVED: ("SOLVED", theme.SUCCESS, theme.INNOCENT_SOFT),
+            GamePhase.STUCK: ("STUCK", theme.WARNING, theme.WARNING_SOFT),
+            GamePhase.INCONSISTENT: ("INCONSISTENT", theme.ERROR, theme.CRIMINAL_SOFT),
+        }
+        phase_text, phase_color, phase_surface = phase_map.get(
+            self.game_view.phase, ("READY", COLOR_TEXT_MUTED, theme.PANEL_SOFT)
+        )
+
         self.phase_label.configure(
             text=phase_text,
             text_color=phase_color,
             fg_color=phase_surface,
         )
 
+        if self.game_view.phase == GamePhase.SOLVED:
+            self.selected_cell_id = None
+            self.highlighted_color_map.clear()
+            has_active_focus = False
+        else:
+            selected_cell = self._selected_cell()
+            has_active_focus = (
+                bool(self.highlighted_color_map)
+                or (selected_cell is not None and selected_cell.revealed)
+            )
+
         by_id = {cell.cell_id: cell for cell in self.game_view.cells}
+
         for cell_id, card in self.cards.items():
             if cell_id in by_id:
+                is_highlighted = cell_id in self.highlighted_color_map
+                is_selected = cell_id == self.selected_cell_id
+                is_dimmed = has_active_focus and (not is_selected) and (not is_highlighted)
+
                 card.update_view(
                     by_id[cell_id],
-                    selected=cell_id == self.selected_cell_id,
-                    highlighted=cell_id in self.highlighted_cells,
+                    selected=is_selected,
+                    highlight_color=self.highlighted_color_map.get(cell_id),
+                    is_dimmed=is_dimmed,
+                    board_size=self.game_view.size,
                 )
-        self._refresh_detail()
-        self._refresh_clue_browser()
+
         self._refresh_metrics()
         self._refresh_trace()
         self._refresh_controls()
-
-    def _refresh_diagnostics(self) -> None:
-        """Refresh solver diagnostics without repainting the board cards."""
-
-        self.game_view = self.gateway.get_public_state()
-        self._refresh_metrics()
-        self._refresh_trace()
 
     def _selected_cell(self) -> CellView | None:
         return next(
@@ -590,191 +1017,104 @@ class GriductiveApp(ctk.CTk):
             None,
         )
 
-    def _refresh_card_styles(self, cell_ids: set[str] | None = None) -> None:
-        """Refresh only visual selection/highlight state for specified cards."""
-
-        targets = self.cards.keys() if cell_ids is None else cell_ids
-        for cell_id in targets:
-            card = self.cards.get(cell_id)
-            if card is not None:
-                card.update_style(
-                    selected=cell_id == self.selected_cell_id,
-                    highlighted=cell_id in self.highlighted_cells,
-                )
-
-    def _refresh_selection_view(
-        self,
-        previous_selected: str | None,
-        previous_highlights: set[str],
-    ) -> None:
-        """Update only widgets affected by a selection/highlight change."""
-
-        affected_cells = previous_highlights | self.highlighted_cells
-        if previous_selected:
-            affected_cells.add(previous_selected)
-        if self.selected_cell_id:
-            affected_cells.add(self.selected_cell_id)
-        self._refresh_card_styles(affected_cells)
-        self._refresh_detail()
-        self._sync_clue_menu_selection()
-        self._refresh_controls()
-
-    def _refresh_detail(self) -> None:
-        cell = self._selected_cell()
-        if cell is None:
-            self.selected_title.configure(text="Select a card")
-            self.selected_meta.configure(text="No character selected")
-            text, color, surface = UNSOLVED_PRESENTATION
-            clue = "Choose a card to inspect its public information."
-        else:
-            self.selected_title.configure(text=f"{cell.cell_id} · {cell.name}")
-            self.selected_meta.configure(text=cell.profession)
-            if cell.revealed:
-                text, color, surface = STATUS_PRESENTATION[cell.status]
-                clue = cell.clue_text or "The engine did not provide clue text."
-                if cell.clue_id:
-                    clue = f"{cell.clue_id}\n{clue}"
-            else:
-                text, color, surface = UNSOLVED_PRESENTATION
-                clue = "Face-down clue — prove CRIMINAL or INNOCENT to reveal it."
-
-        self.selected_status.configure(text=text, fg_color=surface, text_color=color)
-        self.clue_text.configure(state="normal")
-        self.clue_text.delete("1.0", "end")
-        self.clue_text.insert("1.0", clue)
-        self.clue_text.configure(state="disabled")
-
-    def _refresh_clue_browser(self) -> None:
-        self.clue_menu_lookup = {
-            f"{cell.cell_id} · {cell.clue_id or 'clue'}": cell.cell_id
-            for cell in self.game_view.cells
-            if cell.revealed and cell.clue_text
-        }
-        values = list(self.clue_menu_lookup) or ["No revealed clues"]
-        self.clue_menu.configure(values=values)
-        self.clue_menu.set(values[0])
-        self._sync_clue_menu_selection()
-
-    def _sync_clue_menu_selection(self) -> None:
-        selected_label = next(
-            (
-                label
-                for label, cell_id in self.clue_menu_lookup.items()
-                if cell_id == self.selected_cell_id
-            ),
-            None,
-        )
-        if selected_label:
-            self.clue_menu.set(selected_label)
-
-    def _refresh_metrics(self) -> None:
-        metrics = self.game_view.metrics
-        self.metrics_label.configure(
-            text=(
-                f"SAT calls      {metrics.sat_calls:>6}\n"
-                f"Decisions      {metrics.decisions:>6}\n"
-                f"Propagations   {metrics.propagations:>6}\n"
-                f"Backtracks     {metrics.backtracks:>6}\n"
-                f"Runtime        {metrics.runtime_ms:>6.1f} ms"
-            )
-        )
-
-    @staticmethod
-    def _format_trace_entry(entry: TraceEntry) -> str:
-        lines = [f"[Step {entry.step}] {entry.message}"]
-        if entry.active_clue_ids:
-            lines.append(f"  Active clues: {', '.join(entry.active_clue_ids)}")
-        if entry.sat_queries:
-            lines.extend(f"  Query: {query}" for query in entry.sat_queries)
-        if entry.verdict:
-            lines.append(f"  Verdict: {entry.verdict}")
-        if entry.revealed_clue_id:
-            lines.append(f"  Added to KB: {entry.revealed_clue_id}")
-        return "\n".join(lines)
-
-    def _refresh_trace(self) -> None:
-        content = "\n\n".join(self._format_trace_entry(entry) for entry in self.game_view.trace)
-        self.trace_text.configure(state="normal")
-        self.trace_text.delete("1.0", "end")
-        self.trace_text.insert("1.0", content or "No deduction step yet.")
-        self.trace_text.see("end")
-        self.trace_text.configure(state="disabled")
-
-    def _refresh_controls(self) -> None:
-        selected = self._selected_cell()
-        can_submit = bool(
-            selected
-            and not selected.revealed
-            and self.game_view.phase is GamePhase.ACTIVE
-            and not self.auto_running
-        )
-        verdict_state = "normal" if can_submit else "disabled"
-        self.criminal_button.configure(state=verdict_state)
-        self.innocent_button.configure(state=verdict_state)
-
-        can_deduce = self.game_view.phase in (GamePhase.READY, GamePhase.ACTIVE)
-        self.hint_button.configure(
-            state="normal" if can_deduce and not self.auto_running else "disabled"
-        )
-        self.step_button.configure(
-            state="normal" if can_deduce and not self.auto_running else "disabled"
-        )
-        self.auto_button.configure(
-            text="■  Stop" if self.auto_running else "▶  Auto Solve",
-            state="normal" if can_deduce or self.auto_running else "disabled",
-            fg_color=theme.ERROR if self.auto_running else theme.PRIMARY,
-        )
+    def _clear_selection(self) -> None:
+        self.selected_cell_id = None
+        self.highlighted_color_map.clear()
+        self._refresh_all()
 
     def _select_cell(self, cell_id: str) -> None:
-        previous_selected = self.selected_cell_id
-        previous_highlights = set(self.highlighted_cells)
+        if self._ignore_clicks:
+            return
+
+        if self.selected_cell_id == cell_id:
+            self._clear_selection()
+            return
+
         self.selected_cell_id = cell_id
-        self.highlighted_cells.clear()
-        self._show_feedback(f"Selected {cell_id}.", ActionCode.INFO)
-        self._refresh_selection_view(previous_selected, previous_highlights)
+        self.highlighted_color_map.clear()
+        self._refresh_all()
+
+        cell = self._selected_cell()
+        if cell and not cell.revealed and self.game_view.phase is GamePhase.ACTIVE and not self.auto_running:
+            VerdictDialog(
+                self,
+                cell=cell,
+                on_submit=lambda status: self._submit_verdict_for(cell_id, status),
+                on_cancel=self._clear_selection,
+            )
 
     def _select_clue(self, cell_id: str) -> None:
-        cell = next((cell for cell in self.game_view.cells if cell.cell_id == cell_id), None)
+        """KHI CLICK VÀO MANH MỐI: TỰ ĐỘNG HIGHLIGHT CÁC Ô HÀNG XÓM XUNG QUANH MÀU XANH LAM."""
+        if self._ignore_clicks:
+            return
+
+        cell = next((c for c in self.game_view.cells if c.cell_id == cell_id), None)
         if cell is None or not cell.revealed:
             return
-        previous_selected = self.selected_cell_id
-        previous_highlights = set(self.highlighted_cells)
-        self.selected_cell_id = cell_id
-        self.highlighted_cells = set(cell.clue_references)
-        self._show_feedback(
-            f"{cell.clue_id or cell_id}: highlighted {len(self.highlighted_cells)} referenced cells.",
-            ActionCode.INFO,
-        )
-        self._refresh_selection_view(previous_selected, previous_highlights)
 
-    def _select_clue_from_menu(self, label: str) -> None:
-        cell_id = self.clue_menu_lookup.get(label)
-        if cell_id:
-            self._select_clue(cell_id)
-
-    def _submit_verdict(self, status: Status) -> None:
-        cell = self._selected_cell()
-        if cell is None or cell.revealed:
-            self._show_feedback("Select an unsolved character first.", ActionCode.INFO)
+        if self.selected_cell_id == cell_id:
+            self._clear_selection()
             return
-        result = self.gateway.submit_verdict(cell.cell_id, status)
+
+        self.selected_cell_id = cell_id
+        self.highlighted_color_map.clear()
+
+        clue = cell.clue_text.lower() if cell.clue_text else ""
+        col_letter = cell_id[0]
+        refs = cell.clue_references or []
+
+        # 1. Nếu Manh mối có từ "neighbor" / "neighbors" -> Highlight TOÀN BỘ 8 ô xung quanh
+        if "neighbor" in clue:
+            neighbors = get_adjacent_neighbors(cell_id, self.game_view.size)
+            for nid in neighbors:
+                self.highlighted_color_map[nid] = COLOR_RELATION  # Sáng Xanh Lam Electric
+
+        # 2. Quét các điều kiện tham chiếu khác (được nhắc tên, cùng cột, v.v.)
+        for other_cell in self.game_view.cells:
+            other_id = other_cell.cell_id
+            if other_id == cell_id:
+                continue
+
+            if "lucy" in clue and other_id == "D3":
+                self.highlighted_color_map[other_id] = COLOR_TARGET_PERSON
+            elif f"column {other_id[0].lower()}" in clue or (f"column {col_letter.lower()}" in clue and other_id.startswith(col_letter)):
+                self.highlighted_color_map[other_id] = COLOR_SCOPE
+            elif other_id in refs:
+                self.highlighted_color_map[other_id] = COLOR_RELATION
+
+        self._refresh_all()
+
+    def _submit_verdict_for(self, cell_id: str, status: Status) -> None:
+        result = self.gateway.submit_verdict(cell_id, status)
         game_changed = result.code in {
             ActionCode.ACCEPTED,
             ActionCode.SOLVED,
-            ActionCode.UNKNOWN,
-            ActionCode.INCONSISTENT,
         }
-        self._handle_action_result(result, refresh_state=game_changed)
+
+        if not game_changed:
+            cell = self._selected_cell()
+            if cell:
+                ConclusionNotPossibleDialog(
+                    self,
+                    cell=cell,
+                    attempted_status=status,
+                    message=getattr(result, "message", None),
+                    on_cancel=self._clear_selection,
+                )
+            else:
+                self._clear_selection()
+        else:
+            self._handle_action_result(result, refresh_state=True)
 
     def _show_hint(self) -> None:
         hint = self.gateway.get_hint()
-        previous_selected = self.selected_cell_id
-        previous_highlights = set(self.highlighted_cells)
-        self.highlighted_cells = set(hint.target_cells)
+        self.highlighted_color_map.clear()
+        for cid in hint.target_cells:
+            self.highlighted_color_map[cid] = COLOR_RELATION
         if hint.clue_source:
             self.selected_cell_id = hint.clue_source
-        self._show_feedback(hint.message, ActionCode.INFO)
-        self._refresh_selection_view(previous_selected, previous_highlights)
+
+        self._refresh_all()
 
     def _solve_one_step(self) -> None:
         self._handle_action_result(self.gateway.auto_solve_step())
@@ -786,7 +1126,6 @@ class GriductiveApp(ctk.CTk):
         if self.game_view.phase not in (GamePhase.READY, GamePhase.ACTIVE):
             return
         self.auto_running = True
-        self._show_feedback("Auto Solve is running one deduction at a time.", ActionCode.INFO)
         self._refresh_controls()
         self.auto_after_id = self.after(40, self._auto_solve_tick)
 
@@ -806,8 +1145,6 @@ class GriductiveApp(ctk.CTk):
         if self.auto_after_id is not None:
             self.after_cancel(self.auto_after_id)
             self.auto_after_id = None
-        if message:
-            self._show_feedback(message, ActionCode.INFO)
         self._refresh_controls()
 
     def _restart(self) -> None:
@@ -816,7 +1153,7 @@ class GriductiveApp(ctk.CTk):
         self._stop_auto()
         result = self.gateway.restart()
         self.selected_cell_id = None
-        self.highlighted_cells.clear()
+        self.highlighted_color_map.clear()
         self._handle_action_result(result, rebuild_board=True)
 
     def _load_puzzle(self) -> None:
@@ -829,7 +1166,7 @@ class GriductiveApp(ctk.CTk):
         self._stop_auto()
         result = self.gateway.load_puzzle(Path(selected))
         self.selected_cell_id = None
-        self.highlighted_cells.clear()
+        self.highlighted_color_map.clear()
         self._handle_action_result(result, rebuild_board=True)
 
     def _handle_action_result(
@@ -839,55 +1176,77 @@ class GriductiveApp(ctk.CTk):
         rebuild_board: bool = False,
         refresh_state: bool = True,
     ) -> None:
-        previous_selected = self.selected_cell_id
-        previous_highlights = set(self.highlighted_cells)
         if refresh_state or result.highlighted_cells:
-            self.highlighted_cells = set(result.highlighted_cells)
+            self.highlighted_color_map.clear()
+            for cid in result.highlighted_cells:
+                self.highlighted_color_map[cid] = COLOR_RELATION
         if result.cell_id:
             self.selected_cell_id = result.cell_id
-        self._show_feedback(result.message, result.code)
-        if refresh_state:
-            self._refresh_all(rebuild_board=rebuild_board)
-        else:
-            # A rejected verdict cannot change cards/clues, but the solver may
-            # still report new SAT-call metrics. Refresh those diagnostics only.
-            self._refresh_diagnostics()
-            self._refresh_selection_view(previous_selected, previous_highlights)
 
-    def _show_feedback(self, message: str, code: ActionCode) -> None:
-        colors = {
-            ActionCode.ACCEPTED: theme.SUCCESS,
-            ActionCode.SOLVED: theme.SUCCESS,
-            ActionCode.NOT_PROVABLE: theme.WARNING,
-            ActionCode.UNKNOWN: theme.WARNING,
-            ActionCode.CONTRADICTED: theme.ERROR,
-            ActionCode.INCONSISTENT: theme.ERROR,
-            ActionCode.ERROR: theme.ERROR,
-            ActionCode.INFO: theme.TEXT_SECONDARY,
-        }
-        surfaces = {
-            ActionCode.ACCEPTED: theme.INNOCENT_SOFT,
-            ActionCode.SOLVED: theme.INNOCENT_SOFT,
-            ActionCode.NOT_PROVABLE: theme.WARNING_SOFT,
-            ActionCode.UNKNOWN: theme.WARNING_SOFT,
-            ActionCode.CONTRADICTED: theme.CRIMINAL_SOFT,
-            ActionCode.INCONSISTENT: theme.CRIMINAL_SOFT,
-            ActionCode.ERROR: theme.CRIMINAL_SOFT,
-            ActionCode.INFO: theme.PANEL_SOFT,
-        }
-        self.feedback_code.configure(
-            text=code.value,
-            text_color=colors[code],
-            fg_color=surfaces[code],
+        self._refresh_all(rebuild_board=rebuild_board)
+
+    def _refresh_metrics(self) -> None:
+        m = self.game_view.metrics
+        if m and "sat" in self.metric_labels:
+            self.metric_labels["sat"].configure(text=str(m.sat_calls))
+            self.metric_labels["dec"].configure(text=str(m.decisions))
+            self.metric_labels["prop"].configure(text=str(m.propagations))
+            self.metric_labels["back"].configure(text=str(m.backtracks))
+            self.metric_labels["time"].configure(text=f"{m.runtime_ms:.4f}ms")
+
+    @staticmethod
+    def _format_trace_entry(entry: TraceEntry) -> str:
+        msg = entry.message or ""
+        msg = msg.replace(" was proved ", " proved ").replace("; its clue joined the KB.", "")
+
+        if entry.step == 0:
+            lines = [f"[STEP {entry.step:02d}] {msg}"]
+            if entry.active_clue_ids:
+                lines.append(f"  └── Active: {', '.join(entry.active_clue_ids)}")
+            return "\n".join(lines)
+
+        lines = [f"[STEP {entry.step:02d}] {msg}"]
+
+        if entry.sat_queries:
+            queries_str = " | ".join(entry.sat_queries)
+            queries_str = queries_str.replace(" and not ", " ∧ ¬").replace(" and ", " ∧ ")
+            lines.append(f"  ├── SAT Query : {queries_str}")
+
+        if entry.verdict:
+            lines.append(f"  ├── Verdict   : {entry.verdict}")
+
+        if entry.revealed_clue_id:
+            lines.append(f"  └── KB Update : + {entry.revealed_clue_id}")
+
+        return "\n".join(lines)
+
+    def _refresh_trace(self) -> None:
+        content = "\n\n".join(self._format_trace_entry(entry) for entry in self.game_view.trace)
+        self.trace_text.configure(state="normal")
+        self.trace_text.delete("1.0", "end")
+        self.trace_text.insert("1.0", content or "No deduction step yet.")
+        self.trace_text.see("end")
+        self.trace_text.configure(state="disabled")
+
+    def _refresh_controls(self) -> None:
+        can_deduce = self.game_view.phase in (GamePhase.READY, GamePhase.ACTIVE)
+        self.hint_button.configure(
+            state="normal" if can_deduce and not self.auto_running else "disabled"
         )
-        self.feedback_label.configure(text=message, text_color=colors[code])
+        self.step_button.configure(
+            state="normal" if can_deduce and not self.auto_running else "disabled"
+        )
+        self.auto_button.configure(
+            text="■  Stop" if self.auto_running else "▶  Auto Solve",
+            state="normal" if can_deduce or self.auto_running else "disabled",
+            fg_color=theme.ERROR if self.auto_running else theme.PRIMARY,
+            text_color="#ffffff" if self.auto_running else theme.PRIMARY_TEXT,
+        )
 
     def _bind_shortcuts(self) -> None:
         for modifier in ("Control", "Command"):
             self.bind(f"<{modifier}-o>", lambda _event: self._load_puzzle())
             self.bind(f"<{modifier}-r>", lambda _event: self._restart())
-        self.bind("<Key-c>", lambda _event: self._submit_verdict(Status.CRIMINAL))
-        self.bind("<Key-i>", lambda _event: self._submit_verdict(Status.INNOCENT))
         self.bind("<Key-h>", lambda _event: self._show_hint())
 
     def _on_close(self) -> None:
@@ -898,3 +1257,7 @@ class GriductiveApp(ctk.CTk):
 def run_app(gateway: GameGateway | None = None) -> None:
     app = GriductiveApp(gateway=gateway)
     app.mainloop()
+
+
+if __name__ == "__main__":
+    run_app()
