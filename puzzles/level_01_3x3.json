@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "id": "level_01_3x3",
+  "name": "Festival Case",
+  "size": 3,
+  "source": "Screenshot board: Anya to Kira (top-left 3x3).",
+  "initial_revealed": [
+    "A1",
+    "B2"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Anya",
+      "profession": "Student",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-A1",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "INNOCENT",
+        "text": "Bella is Innocent."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bella",
+      "profession": "Guard",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-B1",
+        "type": "SAME",
+        "target_cells": [
+          "B1",
+          "C1"
+        ],
+        "text": "Bella and Cara have the same statuses."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cara",
+      "profession": "Builder",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-C1",
+        "type": "EXACTLY",
+        "target_cells": [
+          "C1",
+          "A2"
+        ],
+        "value": 0,
+        "text": "Exactly 0 of Cara and Eliza are Criminals."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Eliza",
+      "profession": "Cook",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-A2",
+        "type": "AT_MOST",
+        "target_cells": [
+          "C2",
+          "B2"
+        ],
+        "value": 1,
+        "text": "At most 1 of Gwen and Franz is a Criminal."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Franz",
+      "profession": "Builder",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_01_3X3-B2",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "INNOCENT",
+        "text": "Anya is Innocent."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gwen",
+      "profession": "Cook",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-C2",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "A3"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among Gwen and Ike."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ike",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-A3",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B3",
+          "A1"
+        ],
+        "right_cells": [
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "There are more Criminals among Jonas and Anya than around Anya alone."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Jonas",
+      "profession": "Guard",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_01_3X3-B3",
+        "type": "FACT",
+        "target_cells": [
+          "C3"
+        ],
+        "value": "INNOCENT",
+        "text": "Kira is Innocent."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Kira",
+      "profession": "Cook",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_01_3X3-C3",
+        "type": "FACT",
+        "target_cells": [
+          "B2"
+        ],
+        "value": "CRIMINAL",
+        "text": "Franz is a Criminal."
+      }
+    }
+  ]
+}

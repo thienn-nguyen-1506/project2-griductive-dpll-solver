@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "id": "level_05_4x4",
+  "name": "Storm Case",
+  "size": 4,
+  "source": "Screenshot board: Anya to Pete (first four rows).",
+  "initial_revealed": [
+    "A1",
+    "B1",
+    "D1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Anya",
+      "profession": "Student",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_05_4X4-A1",
+        "type": "FACT",
+        "target_cells": [
+          "C1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Clara is a Criminal."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Brian",
+      "profession": "Astronaut",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-B1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "INNOCENT",
+        "text": "Anya is Innocent."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Clara",
+      "profession": "Singer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-C1",
+        "type": "SAME",
+        "target_cells": [
+          "C1",
+          "A2"
+        ],
+        "text": "Clara and Emma have the same statuses."
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Dana",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_05_4X4-D1",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Brian is a Criminal."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Emma",
+      "profession": "Detective",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-A2",
+        "type": "EXACTLY",
+        "target_cells": [
+          "A2",
+          "B2"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Emma and Finn is a Criminal."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Finn",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_05_4X4-B2",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "C2",
+          "A1"
+        ],
+        "value": 1,
+        "text": "At least 1 of Gwen and Anya is a Criminal."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gwen",
+      "profession": "Coder",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-C2",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "D2"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among Gwen and Hank."
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Hank",
+      "profession": "Student",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-D2",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B1"
+        ],
+        "right_cells": [
+          "A3",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Brian's group has more Criminals than the group of Ivy and Anya."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ivy",
+      "profession": "Pilot",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_05_4X4-A3",
+        "type": "FACT",
+        "target_cells": [
+          "B3"
+        ],
+        "value": "CRIMINAL",
+        "text": "Jonas is a Criminal."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Jonas",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-B3",
+        "type": "SAME",
+        "target_cells": [
+          "B3",
+          "C3"
+        ],
+        "text": "Jonas and Kobe have the same statuses."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Kobe",
+      "profession": "Coder",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-C3",
+        "type": "EXACTLY",
+        "target_cells": [
+          "C3",
+          "D3"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Kobe and Leo are Criminals."
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Leo",
+      "profession": "Detective",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-D3",
+        "type": "AT_MOST",
+        "target_cells": [
+          "A4",
+          "B1"
+        ],
+        "value": 1,
+        "text": "At most 1 of Milo and Brian is a Criminal."
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Milo",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_05_4X4-A4",
+        "type": "PARITY",
+        "target_cells": [
+          "A4",
+          "B4"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Milo and Noah."
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Noah",
+      "profession": "Singer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-B4",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "C4",
+          "A1"
+        ],
+        "right_cells": [
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "There are more Criminals among Opal and Anya than around Anya alone."
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Opal",
+      "profession": "Singer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-C4",
+        "type": "FACT",
+        "target_cells": [
+          "D4"
+        ],
+        "value": "CRIMINAL",
+        "text": "Pete is a Criminal."
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Pete",
+      "profession": "Astronaut",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_05_4X4-D4",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Brian is a Criminal."
+      }
+    }
+  ]
+}

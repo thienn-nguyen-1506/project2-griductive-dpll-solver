@@ -18,6 +18,7 @@ from .models import (
     GamePhase,
     GameView,
     HintResult,
+    PuzzleOption,
     SolverMetrics,
     Status,
     TraceEntry,
@@ -184,6 +185,18 @@ class MockGameGateway:
             phase=self._phase,
             trace=tuple(self._trace),
             metrics=self._metrics,
+        )
+
+    def list_puzzles(self) -> tuple[PuzzleOption, ...]:
+        project_root = Path(__file__).resolve().parents[1]
+        return tuple(
+            PuzzleOption(
+                puzzle_id=f"gui_demo_{size}x{size}",
+                name=f"GUI Demo {size}x{size}",
+                size=size,
+                path=project_root / "puzzles" / f"gui_demo_{size}x{size}.json",
+            )
+            for size in range(self.MIN_SIZE, self.MAX_SIZE + 1)
         )
 
     def submit_verdict(self, cell_id: str, status: Status) -> ActionResult:

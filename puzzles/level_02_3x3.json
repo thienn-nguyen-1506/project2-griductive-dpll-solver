@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "id": "level_02_3x3",
+  "name": "Coffee Case",
+  "size": 3,
+  "source": "Screenshot board: Ada to Karl (top-left 3x3).",
+  "initial_revealed": [
+    "A1",
+    "C1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Ada",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_02_3X3-A1",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "INNOCENT",
+        "text": "Bella is Innocent."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bella",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_02_3X3-B1",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "B1",
+          "A2"
+        ],
+        "text": "Bella and Eliza have different statuses."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cole",
+      "profession": "Mechanic",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_02_3X3-C1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "INNOCENT",
+        "text": "Ada is Innocent."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Eliza",
+      "profession": "Mechanic",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_02_3X3-A2",
+        "type": "EXACTLY",
+        "target_cells": [
+          "A2",
+          "B2"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Eliza and Finn are Criminals."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Finn",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_02_3X3-B2",
+        "type": "AT_MOST",
+        "target_cells": [
+          "C2",
+          "C1"
+        ],
+        "value": 1,
+        "text": "At most 1 of Gina and Cole is a Criminal."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gina",
+      "profession": "Scientist",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_02_3X3-C2",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "A3"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among Gina and Ivy."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ivy",
+      "profession": "Scientist",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_02_3X3-A3",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "C1"
+        ],
+        "right_cells": [
+          "B3",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Cole's group has more Criminals than the group of James and Ada."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "James",
+      "profession": "Teacher",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_02_3X3-B3",
+        "type": "FACT",
+        "target_cells": [
+          "C3"
+        ],
+        "value": "INNOCENT",
+        "text": "Karl is Innocent."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Karl",
+      "profession": "Teacher",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_02_3X3-C3",
+        "type": "FACT",
+        "target_cells": [
+          "C1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Cole is a Criminal."
+      }
+    }
+  ]
+}

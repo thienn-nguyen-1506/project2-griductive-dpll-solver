@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "id": "level_04_4x4",
+  "name": "Bakery Case",
+  "size": 4,
+  "source": "Screenshot board: Abel to Priya (first four rows).",
+  "initial_revealed": [
+    "A1",
+    "B1",
+    "C1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Abel",
+      "profession": "Pilot",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-A1",
+        "type": "FACT",
+        "target_cells": [
+          "D1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Dean is a Criminal."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bruno",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-B1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Abel is a Criminal."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cody",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-C1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Abel is a Criminal."
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Dean",
+      "profession": "Student",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-D1",
+        "type": "SAME",
+        "target_cells": [
+          "D1",
+          "A2"
+        ],
+        "text": "Dean and Evan have the same statuses."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Evan",
+      "profession": "Clerk",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-A2",
+        "type": "EXACTLY",
+        "target_cells": [
+          "A2",
+          "B2"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Evan and Franz are Criminals."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Franz",
+      "profession": "Judge",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-B2",
+        "type": "AT_MOST",
+        "target_cells": [
+          "C2",
+          "A1"
+        ],
+        "value": 1,
+        "text": "At most 1 of Gus and Abel is a Criminal."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gus",
+      "profession": "Pilot",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-C2",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "D2"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Gus and Hazel."
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Hazel",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-D2",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "A1"
+        ],
+        "right_cells": [
+          "A3",
+          "B1"
+        ],
+        "operator": "GT",
+        "text": "Abel's group has more Criminals than the group of Ike and Bruno."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ike",
+      "profession": "Farmer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-A3",
+        "type": "FACT",
+        "target_cells": [
+          "B3"
+        ],
+        "value": "INNOCENT",
+        "text": "James is Innocent."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "James",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-B3",
+        "type": "SAME",
+        "target_cells": [
+          "B3",
+          "C3"
+        ],
+        "text": "James and Kira have the same statuses."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Kira",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-C3",
+        "type": "EXACTLY",
+        "target_cells": [
+          "C3",
+          "D3"
+        ],
+        "value": 0,
+        "text": "Exactly 0 of Kira and Leo are Criminals."
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Leo",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-D3",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "A4",
+          "B1"
+        ],
+        "value": 1,
+        "text": "At least 1 of Mason and Bruno is a Criminal."
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Mason",
+      "profession": "Clerk",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-A4",
+        "type": "PARITY",
+        "target_cells": [
+          "A4",
+          "B4"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Mason and Ned."
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Ned",
+      "profession": "Clerk",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-B4",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "C4",
+          "B1"
+        ],
+        "right_cells": [
+          "B1"
+        ],
+        "operator": "GT",
+        "text": "There are more Criminals among Owen and Bruno than around Bruno alone."
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Owen",
+      "profession": "Student",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-C4",
+        "type": "FACT",
+        "target_cells": [
+          "D4"
+        ],
+        "value": "INNOCENT",
+        "text": "Priya is Innocent."
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Priya",
+      "profession": "Pilot",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-D4",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Abel is a Criminal."
+      }
+    }
+  ]
+}

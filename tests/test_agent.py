@@ -229,15 +229,15 @@ class TestUniqueness(unittest.TestCase):
         is_unique, metrics = self.agent.check_uniqueness(snap)
         self.assertFalse(is_unique)
 
-    def test_unsat_is_trivially_unique(self) -> None:
-        """UNSAT formula has zero solutions ⇒ treated as 'unique' (trivial)."""
+    def test_unsat_is_not_unique(self) -> None:
+        """UNSAT formula has zero solutions, so it is not a unique puzzle."""
         snap = _make_snapshot(
             clauses=[[1], [-1]],
             cell_ids=["A1"],
             cell_to_var={"A1": 1},
         )
         is_unique, metrics = self.agent.check_uniqueness(snap)
-        self.assertTrue(is_unique)
+        self.assertFalse(is_unique)
 
 
 class TestTrace(unittest.TestCase):

@@ -122,6 +122,16 @@ class HintResult:
     target_cells: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class PuzzleOption:
+    """One built-in puzzle shown by the GUI level selector."""
+
+    puzzle_id: str
+    name: str
+    size: int
+    path: Path
+
+
 @runtime_checkable
 class GameGateway(Protocol):
     """The only interface the GUI uses to communicate with game logic.
@@ -131,6 +141,8 @@ class GameGateway(Protocol):
     """
 
     def get_public_state(self) -> GameView: ...
+
+    def list_puzzles(self) -> tuple[PuzzleOption, ...]: ...
 
     def submit_verdict(self, cell_id: str, status: Status) -> ActionResult: ...
 

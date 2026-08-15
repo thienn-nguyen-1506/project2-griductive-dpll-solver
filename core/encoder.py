@@ -6,7 +6,7 @@ và cung cấp Bộ đánh giá ngữ nghĩa trực tiếp (Direct Semantic Eval
 
 import itertools
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 # ============================================================
@@ -83,6 +83,12 @@ class Clue:
     target_cells: List[str] = field(default_factory=list)
     value: Optional[Any] = None
     target_status: str = "CRIMINAL"  # "CRIMINAL" hoặc "INNOCENT"
+    text: str = ""
+
+    # Fields used by the COUNT_COMPARE extension.
+    left_cells: List[str] = field(default_factory=list)
+    right_cells: List[str] = field(default_factory=list)
+    operator: str = ""
 
     # Field tương thích với cấu trúc cũ
     clue_type: Optional[str] = None
@@ -184,7 +190,39 @@ class ClueEvaluator:
             )
             return count <= k
 
-        return True
+        elif ctype == "PARITY":
+            parity = str(clue.value or "").upper()
+            count = sum(
+                1 for cid in targets if assignment.get(cid) == target_st
+            )
+            if parity == "ODD":
+                return count % 2 == 1
+            if parity == "EVEN":
+                return count % 2 == 0
+            raise ValueError("PARITY clue value must be ODD or EVEN.")
+
+        elif ctype == "COUNT_COMPARE":
+            left_count = sum(
+                1 for cid in clue.left_cells if assignment.get(cid) == target_st
+            )
+            right_count = sum(
+                1 for cid in clue.right_cells if assignment.get(cid) == target_st
+            )
+            operator = clue.operator.upper()
+            comparisons = {
+                "GT": left_count > right_count,
+                "LT": left_count < right_count,
+                "EQ": left_count == right_count,
+                "GE": left_count >= right_count,
+                "LE": left_count <= right_count,
+            }
+            if operator not in comparisons:
+                raise ValueError(
+                    "COUNT_COMPARE operator must be GT, LT, EQ, GE, or LE."
+                )
+            return comparisons[operator]
+
+        raise ValueError(f"Unsupported clue type: {ctype or '<empty>'}")
 
 
 # ============================================================
@@ -276,6 +314,47 @@ class CNFEncoder:
             a, b = vars_[0], vars_[1]
             return [[-a, b]]
 
+        if clue_type == "PARITY":
+            parity = str(clue.value or "").upper()
+            if parity not in ("ODD", "EVEN"):
+                raise ValueError("PARITY clue value must be ODD or EVEN.")
+
+            def parity_holds(values: Dict[str, bool]) -> bool:
+                count = sum(
+                    values[cell] if target_st == "CRIMINAL" else not values[cell]
+                    for cell in cells
+                )
+                return count % 2 == (1 if parity == "ODD" else 0)
+
+            return self._encode_truth_table(cells, parity_holds)
+
+        if clue_type == "COUNT_COMPARE":
+            operator = clue.operator.upper()
+            if operator not in ("GT", "LT", "EQ", "GE", "LE"):
+                raise ValueError(
+                    "COUNT_COMPARE operator must be GT, LT, EQ, GE, or LE."
+                )
+            involved_cells = list(
+                dict.fromkeys(clue.left_cells + clue.right_cells)
+            )
+
+            def comparison_holds(values: Dict[str, bool]) -> bool:
+                def is_target(cell: str) -> bool:
+                    value = values[cell]
+                    return value if target_st == "CRIMINAL" else not value
+
+                left_count = sum(is_target(cell) for cell in clue.left_cells)
+                right_count = sum(is_target(cell) for cell in clue.right_cells)
+                return {
+                    "GT": left_count > right_count,
+                    "LT": left_count < right_count,
+                    "EQ": left_count == right_count,
+                    "GE": left_count >= right_count,
+                    "LE": left_count <= right_count,
+                }[operator]
+
+            return self._encode_truth_table(involved_cells, comparison_holds)
+
         k = (
             clue.value
             if clue.value is not None
@@ -295,6 +374,35 @@ class CNFEncoder:
             return self._encode_at_most(lits, k)
 
         return []
+
+    def _encode_truth_table(
+        self,
+        cell_ids: List[str],
+        predicate: Callable[[Dict[str, bool]], bool],
+    ) -> List[List[int]]:
+        """Encode a small Boolean constraint by blocking every false row.
+
+        Project regions are intentionally small, so this direct combinatorial
+        encoding is suitable for the two extensions and keeps the generated
+        clauses easy to explain in the report.
+        """
+        unique_cells = list(dict.fromkeys(cell_ids))
+        if not unique_cells:
+            raise ValueError("Extension clue regions must not be empty.")
+
+        variables = {
+            cell: self._get_or_create_cell_var(cell) for cell in unique_cells
+        }
+        clauses: List[List[int]] = []
+        for bits in itertools.product((False, True), repeat=len(unique_cells)):
+            values = dict(zip(unique_cells, bits))
+            if predicate(values):
+                continue
+            clauses.append([
+                -variables[cell] if values[cell] else variables[cell]
+                for cell in unique_cells
+            ])
+        return clauses
 
     def _encode_at_most(self, lits: List[int], k: int) -> List[List[int]]:
         n = len(lits)

@@ -1,8 +1,7 @@
 # Trạng thái phần GUI
 
-Tài liệu này mô tả đúng phạm vi phần việc GUI. Dữ liệu hiện tại là dữ liệu mô
-phỏng để có thể phát triển giao diện trước khi Game Engine, CNF encoder, DPLL và
-Deductive Agent hoàn thành.
+GUI hiện đã được nối với Game Engine, CNF encoder, DPLL và Deductive Agent thật
+qua `gui/real_gateway.py`.
 
 ## GUI đã có
 
@@ -16,21 +15,17 @@ Deductive Agent hoàn thành.
 - Trình duyệt các clue đã mở.
 - Hint, chạy một deduction step, Auto Solve từng bước và nút Stop.
 - Progress, trạng thái ván chơi, solver metrics và deduction trace có cấu trúc.
-- Load JSON, Restart, Light/Dark/System theme và phím tắt.
-- Mock Engine có thể chạy hết một ván để kiểm tra GUI mà không giả vờ là thuật
-  toán suy luận thật.
+- Choose Level, Import Puzzle, Restart, Light/Dark theme và phím tắt.
+- Real Gateway có thể tải và giải các puzzle chính thức bằng KB công khai.
 
-## Chưa có vì thuộc phần việc của thành viên khác
+## Tích hợp đã hoàn thành
 
-- Đọc định dạng puzzle chính thức của nhóm.
-- Chuyển sáu clue template và extension thành CNF.
-- SAT solver/DPLL thật.
-- Kiểm tra entailment bằng hai SAT query.
-- Thuật toán chọn character forced theo row-major order.
-- Sinh metrics thật từ solver.
-
-Khi các phần trên hoàn thành, chỉ cần viết một adapter theo `GameGateway`. Không
-cần sửa layout hoặc các widget trong `gui/app.py`.
+- Đọc và kiểm tra schema puzzle chính thức.
+- Mã hóa sáu core clue cùng `PARITY` và `COUNT_COMPARE`.
+- Kiểm tra entailment bằng SAT, chọn forced character theo row-major.
+- Manual verdict, Hint, Auto Solve, Restart và Load đều dùng logic thật.
+- Metrics và deduction trace được lấy từ DPLL/Agent.
+- Card úp không đưa hidden status hoặc clue vào `GameView`.
 
 ## Chạy thử
 
@@ -39,5 +34,6 @@ source .venv/bin/activate
 python main.py
 ```
 
-Trong GUI, chọn **Load JSON** rồi mở một trong ba file ở thư mục `puzzles/` để
-kiểm tra các kích thước bảng. Đây chỉ là schema tối giản dành cho Mock Engine.
+Trong GUI, chọn **Choose Level** để mở một trong bảy màn tích hợp sẵn. Chọn
+**Import Puzzle** khi cần nạp một file `level_*.json` bên ngoài. Các file
+`gui_demo_*.json` là dữ liệu Mock cũ và không được Real Gateway chấp nhận.

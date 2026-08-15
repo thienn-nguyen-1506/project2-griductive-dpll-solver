@@ -6,6 +6,7 @@ và đóng gói KnowledgeBaseSnapshot.
 
 import unittest
 from core.encoder import Clue, ClueEvaluator, CNFEncoder, RegionHelper
+from core.dpll import DPLLSolver
 
 
 class TestCNFEncoder(unittest.TestCase):
@@ -128,6 +129,39 @@ class TestCNFEncoder(unittest.TestCase):
         # AT_MOST k=-1 cho 1 ô -> UNSAT
         c_unsat2 = Clue(type="AT_MOST", target_cells=["A1"], value=-1)
         self.assertEqual(self.encoder.encode_clue(c_unsat2), [[]])
+
+    def test_extension_encodings_match_their_semantics(self) -> None:
+        """PARITY and COUNT_COMPARE CNF agree with direct evaluation."""
+        clues = [
+            Clue(
+                type="PARITY",
+                target_cells=["A1", "A2"],
+                value="ODD",
+            ),
+            Clue(
+                type="COUNT_COMPARE",
+                left_cells=["A1"],
+                right_cells=["A2"],
+                operator="GT",
+            ),
+        ]
+        solver = DPLLSolver()
+        for clue in clues:
+            clauses = self.encoder.encode_clue(clue)
+            for a1 in (False, True):
+                for a2 in (False, True):
+                    assignment = {
+                        "A1": "CRIMINAL" if a1 else "INNOCENT",
+                        "A2": "CRIMINAL" if a2 else "INNOCENT",
+                    }
+                    units = [
+                        [self.encoder.cell_to_var["A1"] if a1 else -self.encoder.cell_to_var["A1"]],
+                        [self.encoder.cell_to_var["A2"] if a2 else -self.encoder.cell_to_var["A2"]],
+                    ]
+                    self.assertEqual(
+                        solver.solve(clauses + units).is_sat,
+                        ClueEvaluator.evaluate(clue, assignment),
+                    )
 
     # ------------------------------------------------------------
     # 4. Tests cho Clue Evaluator (Direct Semantic Evaluation)

@@ -1,92 +1,342 @@
-"""Game Engine managing hidden ground-truth, player interactions, 
-and integration with CNFEncoder & DeductiveAgent.
+"""Game Engine for the real Griductive reveal protocol.
+
+The engine owns the complete puzzle, hidden solution, and unrevealed clues.  It
+only asks the Deductive Agent questions about the public knowledge base and
+reveals a card after the claimed verdict is logically forced.
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass
+from typing import Optional, Tuple
 
-from core.agent import AgentMetrics, ClassificationResult, DeductiveAgent, KnowledgeBaseSnapshot
-from core.encoder import Clue, CNFEncoder
+from core.agent import AgentMetrics, ClassificationResult, DeductiveAgent, TraceStep
+from core.encoder import CNFEncoder, Clue, KnowledgeBaseSnapshot
+from core.puzzle import PuzzleDefinition
+
+
+@dataclass(frozen=True)
+class EnginePublicCell:
+    cell_id: str
+    name: str
+    profession: str
+    revealed: bool
+    status: Optional[str] = None
+    clue: Optional[Clue] = None
+
+
+@dataclass(frozen=True)
+class EngineTraceEntry:
+    step: int
+    message: str
+    active_clue_ids: Tuple[str, ...] = ()
+    sat_queries: Tuple[str, ...] = ()
+    verdict: Optional[str] = None
+    revealed_clue_id: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class EngineAction:
+    code: str
+    message: str
+    cell_id: Optional[str] = None
+    revealed_clue: Optional[Clue] = None
+    highlighted_cells: Tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class EngineHint:
+    message: str
+    clue_source: Optional[str] = None
+    target_cells: Tuple[str, ...] = ()
 
 
 class GameEngine:
-    """Manages the interactive game state, hidden solutions, and clue reveals."""
+    """Own hidden state and execute manual or automatic deduction steps."""
+
+    VALID_STATUSES = {"CRIMINAL", "INNOCENT"}
 
     def __init__(
         self,
-        grid_size: int,
-        all_cell_ids: List[str],
-        hidden_solution: Dict[str, bool],
-        hidden_clues: Dict[str, Clue],
-        initial_known: Optional[Dict[str, str]] = None,
+        puzzle: PuzzleDefinition,
+        *,
+        agent: Optional[DeductiveAgent] = None,
     ) -> None:
-        """
-        hidden_solution: Trạng thái thật {'A1': True, 'A2': False, ...} (True = CRIMINAL)
-        hidden_clues: Manh mối ẩn dưới lá bài {'A1': Clue_obj, ...}
-        initial_known: Ô đã công khai từ đầu {'A1': 'CRIMINAL', ...}
-        """
-        self.grid_size = grid_size
-        self.all_cell_ids = all_cell_ids
-        self._solution = hidden_solution
-        self._clues = hidden_clues
-        
-        # Trạng thái công khai trên bàn cờ
-        self.known_statuses: Dict[str, str] = initial_known.copy() if initial_known else {}
-        self.revealed_cards: Set[str] = set()
+        self._puzzle = puzzle
+        self._cell_map = puzzle.cell_map
+        self._solution = puzzle.hidden_solution
+        self._all_clues = list(puzzle.clues)
+        self._clue_owner = {
+            cell.clue.id: cell.cell_id for cell in puzzle.cells
+        }
+        self._encoder = CNFEncoder(character_ids=list(puzzle.cell_ids))
+        self._agent = agent or DeductiveAgent()
+        self.restart()
 
-        self.encoder = CNFEncoder()
-        self.agent = DeductiveAgent()
+    @property
+    def size(self) -> int:
+        return self._puzzle.size
 
-    # ---------------------------------------------------------------------------
-    # Core Game Logic (Player / Ground Truth)
-    # ---------------------------------------------------------------------------
+    @property
+    def puzzle_name(self) -> str:
+        return self._puzzle.name
 
-    def check_verdict(self, char_id: str, claimed_status: str) -> bool:
-        """Kiểm tra câu trả lời người chơi chọn ('CRIMINAL'/'INNOCENT') có đúng đáp án không."""
-        if char_id not in self._solution:
-            return False
-        
-        is_criminal_truth = self._solution[char_id]
-        expected_status = "CRIMINAL" if is_criminal_truth else "INNOCENT"
-        return claimed_status == expected_status
+    @property
+    def step(self) -> int:
+        return self._step
 
-    def reveal_card(self, char_id: str) -> Optional[Clue]:
-        """Lật bài tại ô char_id và kích hoạt manh mối ẩn."""
-        if char_id in self._clues:
-            self.revealed_cards.add(char_id)
-            return self._clues[char_id]
-        return None
+    @property
+    def phase(self) -> str:
+        return self._phase
 
-    # ---------------------------------------------------------------------------
-    # Agent & CNF Integration
-    # ---------------------------------------------------------------------------
+    @property
+    def trace(self) -> Tuple[EngineTraceEntry, ...]:
+        return tuple(self._trace)
+
+    @property
+    def metrics(self) -> AgentMetrics:
+        return self._metrics
+
+    @property
+    def known_statuses(self) -> dict[str, str]:
+        return dict(self._known_statuses)
+
+    def public_cells(self) -> Tuple[EnginePublicCell, ...]:
+        """Return a public-only cell snapshot with hidden fields removed."""
+        cells: list[EnginePublicCell] = []
+        for cell in self._puzzle.cells:
+            revealed = cell.cell_id in self._revealed_cards
+            cells.append(
+                EnginePublicCell(
+                    cell_id=cell.cell_id,
+                    name=cell.name,
+                    profession=cell.profession,
+                    revealed=revealed,
+                    status=self._known_statuses.get(cell.cell_id) if revealed else None,
+                    clue=cell.clue if revealed else None,
+                )
+            )
+        return tuple(cells)
 
     def get_kb_snapshot(self) -> KnowledgeBaseSnapshot:
-        """Tạo KnowledgeBaseSnapshot từ danh sách manh mối đã lật và trạng thái ô đã biết."""
-        active_clues = [self._clues[cid] for cid in self.revealed_cards if cid in self._clues]
-        active_clue_ids = [c.id for c in active_clues]
-
-        return self.encoder.build_snapshot(
-            all_cell_ids=self.all_cell_ids,
-            clues=active_clues,
-            active_clue_ids=active_clue_ids,
-            known_statuses=self.known_statuses,
+        """Build KB_t from revealed clues and previously proved statuses only."""
+        return self._encoder.build_snapshot(
+            all_cell_ids=list(self._puzzle.cell_ids),
+            clues=self._all_clues,
+            active_clue_ids=list(self._active_clue_ids),
+            known_statuses=dict(self._known_statuses),
         )
 
-    def deduce_next_move(self) -> Tuple[Optional[Tuple[str, str]], ClassificationResult]:
-        """Cho Agent suy luận bước tiếp theo dựa trên thông tin công khai hiện tại.
-        
-        Returns:
-            ((cell_id, status), result) nếu tìm thấy ô ép buộc.
-            (None, result) nếu chưa đủ thông tin ép buộc ô nào.
-        """
-        snapshot = self.get_kb_snapshot()
-        forced_cell, result = self.agent.deduce_one_step(snapshot)
+    @staticmethod
+    def clue_references(clue: Clue) -> Tuple[str, ...]:
+        if clue.type == "COUNT_COMPARE":
+            return tuple(dict.fromkeys(clue.left_cells + clue.right_cells))
+        return tuple(clue.target_cells)
 
-        # Nếu suy luận ra nước đi bắt buộc, tự động cập nhật vào ô đã biết
-        if forced_cell:
-            cell_id, status = forced_cell
-            self.known_statuses[cell_id] = status
+    def _merge_metrics(self, metrics: AgentMetrics) -> None:
+        self._metrics.sat_calls += metrics.sat_calls
+        self._metrics.total_decisions += metrics.total_decisions
+        self._metrics.total_propagations += metrics.total_propagations
+        self._metrics.total_backtracks += metrics.total_backtracks
+        self._metrics.total_runtime_ms += metrics.total_runtime_ms
 
-        return forced_cell, result
+    @staticmethod
+    def _trace_for_cell(
+        result: ClassificationResult,
+        cell_id: str,
+    ) -> Optional[TraceStep]:
+        return next((step for step in result.trace if step.cell_id == cell_id), None)
+
+    @staticmethod
+    def _format_sat_queries(trace_step: Optional[TraceStep]) -> Tuple[str, ...]:
+        if trace_step is None:
+            return ()
+        return tuple(
+            f"KB and {query.cell_id}={query.assumed_status} -> {query.result}"
+            for query in trace_step.sat_queries
+        )
+
+    def _classify(self) -> ClassificationResult:
+        result = self._agent.classify_all(self.get_kb_snapshot())
+        self._merge_metrics(result.metrics)
+        return result
+
+    def _accept_forced(
+        self,
+        cell_id: str,
+        status: str,
+        result: ClassificationResult,
+    ) -> EngineAction:
+        # Hidden truth is used only as an internal integrity assertion; the
+        # verdict above was selected solely from the public KB.
+        if self._solution[cell_id] != status:
+            self._phase = "INCONSISTENT"
+            return EngineAction(
+                "INCONSISTENT",
+                f"The public KB conflicts with the hidden solution at {cell_id}.",
+                cell_id,
+            )
+
+        trace_step = self._trace_for_cell(result, cell_id)
+        clue = self._cell_map[cell_id].clue
+        self._known_statuses[cell_id] = status
+        self._revealed_cards.add(cell_id)
+        self._active_clue_ids.append(clue.id)
+        self._step += 1
+        self._phase = (
+            "SOLVED"
+            if len(self._revealed_cards) == len(self._puzzle.cells)
+            else "ACTIVE"
+        )
+        self._trace.append(
+            EngineTraceEntry(
+                step=self._step,
+                message=f"{cell_id} was proved {status}; its clue joined the KB.",
+                active_clue_ids=tuple(self._active_clue_ids),
+                sat_queries=self._format_sat_queries(trace_step),
+                verdict=f"{cell_id} = {status}",
+                revealed_clue_id=clue.id,
+            )
+        )
+
+        code = "SOLVED" if self._phase == "SOLVED" else "ACCEPTED"
+        message = (
+            "All characters have been solved."
+            if code == "SOLVED"
+            else f"{cell_id}: verdict accepted. A new clue was revealed."
+        )
+        return EngineAction(
+            code=code,
+            message=message,
+            cell_id=cell_id,
+            revealed_clue=clue,
+            highlighted_cells=self.clue_references(clue),
+        )
+
+    def submit_verdict(self, cell_id: str, claimed_status: str) -> EngineAction:
+        """Accept only verdicts entailed by the current public KB."""
+        claimed_status = str(claimed_status).upper()
+        if cell_id not in self._cell_map:
+            return EngineAction("ERROR", f"Cell {cell_id} does not exist.")
+        if claimed_status not in self.VALID_STATUSES:
+            return EngineAction("ERROR", f"Invalid verdict: {claimed_status}.", cell_id)
+        if cell_id in self._revealed_cards:
+            return EngineAction(
+                "INFO",
+                f"{cell_id} is already revealed as {self._known_statuses[cell_id]}.",
+                cell_id,
+            )
+        if self._phase == "SOLVED":
+            return EngineAction("SOLVED", "All characters are already solved.")
+        if self._phase == "INCONSISTENT":
+            return EngineAction("INCONSISTENT", "The public KB is inconsistent.")
+
+        result = self._classify()
+        if not result.is_consistent:
+            self._phase = "INCONSISTENT"
+            return EngineAction("INCONSISTENT", "The public KB is inconsistent.")
+
+        forced_status = result.classifications.get(cell_id, "UNKNOWN")
+        if forced_status == "UNKNOWN":
+            return EngineAction(
+                "NOT_PROVABLE",
+                f"{cell_id}: neither status is forced by the current KB.",
+                cell_id,
+            )
+        if forced_status != claimed_status:
+            return EngineAction(
+                "CONTRADICTED",
+                f"{cell_id}: the opposite status is logically forced.",
+                cell_id,
+            )
+        return self._accept_forced(cell_id, forced_status, result)
+
+    def auto_solve_step(self) -> EngineAction:
+        """Perform exactly one deterministic no-guess reveal step."""
+        if self._phase == "SOLVED":
+            return EngineAction("SOLVED", "All characters are already solved.")
+        if self._phase == "INCONSISTENT":
+            return EngineAction("INCONSISTENT", "The public KB is inconsistent.")
+
+        result = self._classify()
+        if not result.is_consistent:
+            self._phase = "INCONSISTENT"
+            return EngineAction("INCONSISTENT", "The public KB is inconsistent.")
+
+        forced = self._agent.choose_next_forced(result.classifications)
+        if forced is None:
+            self._phase = "STUCK"
+            return EngineAction(
+                "UNKNOWN",
+                "No unsolved character is logically forced by the current KB.",
+            )
+        cell_id, status = forced
+        return self._accept_forced(cell_id, status, result)
+
+    def get_hint(self) -> EngineHint:
+        """Identify a forced target without reading or returning its hidden label."""
+        if self._phase == "SOLVED":
+            return EngineHint("The puzzle is already solved.")
+        if self._phase == "INCONSISTENT":
+            return EngineHint("The public KB is inconsistent.")
+
+        result = self._classify()
+        if not result.is_consistent:
+            self._phase = "INCONSISTENT"
+            return EngineHint("The public KB is inconsistent.")
+        forced = self._agent.choose_next_forced(result.classifications)
+        if forced is None:
+            return EngineHint("No character is currently forced by the public KB.")
+
+        target, _status = forced
+        clue_source = next(
+            (
+                self._clue_owner[clue_id]
+                for clue_id in self._active_clue_ids
+                if target
+                in self.clue_references(
+                    self._cell_map[self._clue_owner[clue_id]].clue
+                )
+            ),
+            None,
+        )
+        target_cells = (
+            tuple(dict.fromkeys((clue_source, target)))
+            if clue_source
+            else (target,)
+        )
+        message = (
+            f"Review {clue_source}'s clue; {target} can be proved next."
+            if clue_source
+            else f"A forced verdict is available for {target}."
+        )
+        return EngineHint(message, clue_source, target_cells)
+
+    def restart(self) -> EngineAction:
+        """Restore the initial public cards and clear all solver history."""
+        self._known_statuses = {
+            cell_id: self._solution[cell_id]
+            for cell_id in self._puzzle.initial_revealed
+        }
+        self._revealed_cards = set(self._puzzle.initial_revealed)
+        self._active_clue_ids = [
+            self._cell_map[cell_id].clue.id
+            for cell_id in self._puzzle.initial_revealed
+        ]
+        self._step = 0
+        self._phase = (
+            "SOLVED"
+            if len(self._revealed_cards) == len(self._puzzle.cells)
+            else "ACTIVE"
+        )
+        self._metrics = AgentMetrics()
+        self._trace = [
+            EngineTraceEntry(
+                step=0,
+                message=(
+                    f"Loaded {len(self._revealed_cards)} initial public clues."
+                ),
+                active_clue_ids=tuple(self._active_clue_ids),
+            )
+        ]
+        return EngineAction("INFO", "Puzzle restarted from its initial clues.")

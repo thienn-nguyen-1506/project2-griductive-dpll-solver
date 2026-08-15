@@ -19,6 +19,7 @@ from .models import (
     GameGateway,
     GamePhase,
     GameView,
+    PuzzleOption,
     Status,
     TraceEntry,
 )
@@ -406,6 +407,74 @@ class ConclusionNotPossibleDialog(BaseModal):
         keep_looking_btn.grid(row=4, column=0, padx=24, pady=(0, 16), sticky="ew")
 
 
+class LevelSelectDialog(BaseModal):
+    """In-app catalog for loading one of the bundled logical puzzles."""
+
+    def __init__(
+        self,
+        parent: ctk.CTk,
+        levels: tuple[PuzzleOption, ...],
+        current_puzzle_name: str,
+        on_select: Callable[[PuzzleOption], None],
+    ) -> None:
+        super().__init__(
+            parent,
+            title="Choose Level",
+            width=520,
+            height=570,
+        )
+        self.on_select = on_select
+        self.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            self,
+            text="Choose a level",
+            text_color=COLOR_TEXT_MAIN,
+            font=ctk.CTkFont(size=22, weight="bold"),
+        ).grid(row=0, column=0, padx=24, pady=(22, 4), sticky="w")
+        ctk.CTkLabel(
+            self,
+            text="Select a built-in puzzle. Your current progress will be replaced.",
+            text_color=COLOR_TEXT_MUTED,
+            font=ctk.CTkFont(size=12),
+        ).grid(row=1, column=0, padx=24, pady=(0, 12), sticky="w")
+
+        level_list = ctk.CTkScrollableFrame(
+            self,
+            width=456,
+            height=420,
+            fg_color=theme.PANEL_SOFT,
+            corner_radius=0,
+            scrollbar_button_color=theme.BORDER,
+        )
+        level_list.grid(row=2, column=0, padx=24, pady=(0, 20), sticky="nsew")
+        level_list.grid_columnconfigure(0, weight=1)
+
+        for index, option in enumerate(levels, start=1):
+            is_current = option.name == current_puzzle_name
+            button = ctk.CTkButton(
+                level_list,
+                text=f"LEVEL {index:02d}   ·   {option.name}   ·   {option.size}×{option.size}",
+                height=48,
+                corner_radius=0,
+                anchor="w",
+                fg_color=theme.PRIMARY if is_current else theme.PANEL_BACKGROUND,
+                hover_color=theme.PRIMARY_HOVER if is_current else theme.BORDER,
+                text_color=theme.PRIMARY_TEXT if is_current else COLOR_TEXT_MAIN,
+                border_width=1,
+                border_color=theme.PRIMARY if is_current else theme.BORDER,
+                font=ctk.CTkFont(size=13, weight="bold"),
+                command=lambda selected=option: self._choose(selected),
+            )
+            button.grid(row=index - 1, column=0, padx=8, pady=5, sticky="ew")
+
+    def _choose(self, option: PuzzleOption) -> None:
+        callback = self.on_select
+        self.on_cancel = None
+        self.close()
+        callback(option)
+
+
 # ----------------------------------------------------------------------
 # CHARACTER CARD
 # ----------------------------------------------------------------------
@@ -704,15 +773,26 @@ class GriductiveApp(ctk.CTk):
         )
         self.appearance_menu.set("Dark")
         self.appearance_menu.pack(side="left", padx=(0, 8))
-        ctk.CTkButton(
+        self.choose_level_button = ctk.CTkButton(
             controls,
-            text="Load JSON",
-            width=94,
+            text="Choose Level",
+            width=110,
             corner_radius=0,
             fg_color=theme.PANEL_SOFT,
             hover_color=theme.BORDER,
             text_color=COLOR_TEXT_MAIN,
-            command=self._load_puzzle,
+            command=self._show_level_selector,
+        )
+        self.choose_level_button.pack(side="left", padx=4)
+        ctk.CTkButton(
+            controls,
+            text="Import Puzzle",
+            width=112,
+            corner_radius=0,
+            fg_color=theme.PANEL_SOFT,
+            hover_color=theme.BORDER,
+            text_color=COLOR_TEXT_MAIN,
+            command=self._import_puzzle,
         ).pack(side="left", padx=4)
         ctk.CTkButton(
             controls,
@@ -1156,15 +1236,36 @@ class GriductiveApp(ctk.CTk):
         self.highlighted_color_map.clear()
         self._handle_action_result(result, rebuild_board=True)
 
-    def _load_puzzle(self) -> None:
+    def _show_level_selector(self) -> None:
+        levels = self.gateway.list_puzzles()
+        if not levels:
+            messagebox.showerror("Choose Level", "No built-in puzzle was found.")
+            return
+        LevelSelectDialog(
+            self,
+            levels=levels,
+            current_puzzle_name=self.game_view.puzzle_name,
+            on_select=self._select_level,
+        )
+
+    def _select_level(self, option: PuzzleOption) -> None:
+        self._load_puzzle_path(option.path)
+
+    def _import_puzzle(self) -> None:
         selected = filedialog.askopenfilename(
-            title="Load Griductive puzzle",
+            title="Import Griductive puzzle",
             filetypes=[("JSON puzzle", "*.json"), ("All files", "*.*")],
         )
         if not selected:
             return
+        self._load_puzzle_path(Path(selected))
+
+    def _load_puzzle_path(self, path: Path) -> None:
         self._stop_auto()
-        result = self.gateway.load_puzzle(Path(selected))
+        result = self.gateway.load_puzzle(path)
+        if result.code is ActionCode.ERROR:
+            messagebox.showerror("Load puzzle", result.message)
+            return
         self.selected_cell_id = None
         self.highlighted_color_map.clear()
         self._handle_action_result(result, rebuild_board=True)
@@ -1245,7 +1346,8 @@ class GriductiveApp(ctk.CTk):
 
     def _bind_shortcuts(self) -> None:
         for modifier in ("Control", "Command"):
-            self.bind(f"<{modifier}-o>", lambda _event: self._load_puzzle())
+            self.bind(f"<{modifier}-l>", lambda _event: self._show_level_selector())
+            self.bind(f"<{modifier}-o>", lambda _event: self._import_puzzle())
             self.bind(f"<{modifier}-r>", lambda _event: self._restart())
         self.bind("<Key-h>", lambda _event: self._show_hint())
 

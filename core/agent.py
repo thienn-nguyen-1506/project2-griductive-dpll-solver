@@ -408,8 +408,9 @@ class DeductiveAgent:
         metrics._accumulate(result1.metrics)
 
         if not result1.is_sat:
-            # No solution at all → trivially "unique" (zero solutions).
-            return True, metrics
+            # A valid puzzle must have exactly one solution.  Zero solutions
+            # means the clue set is inconsistent, not unique.
+            return False, metrics
 
         # Build blocking clause over primary variables.
         primary_var_ids = set(snapshot.cell_to_var.values())

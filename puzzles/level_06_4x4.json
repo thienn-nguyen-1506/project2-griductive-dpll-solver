@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "id": "level_06_4x4",
+  "name": "Cat Case",
+  "size": 4,
+  "source": "Screenshot board: Abel to Priya, cat theme (first four rows).",
+  "initial_revealed": [
+    "A1",
+    "B1",
+    "C1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Abel",
+      "profession": "Coder",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-A1",
+        "type": "FACT",
+        "target_cells": [
+          "D1"
+        ],
+        "value": "INNOCENT",
+        "text": "Derek is Innocent."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bruno",
+      "profession": "Officer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-B1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Abel is a Criminal."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cody",
+      "profession": "Singer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-C1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Abel is a Criminal."
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Derek",
+      "profession": "Officer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-D1",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "D1",
+          "A2"
+        ],
+        "text": "Derek and Eliza have different statuses."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Eliza",
+      "profession": "Singer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-A2",
+        "type": "EXACTLY",
+        "target_cells": [
+          "A2",
+          "B2"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Eliza and Franz is a Criminal."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Franz",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-B2",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "C2",
+          "B1"
+        ],
+        "value": 1,
+        "text": "At least 1 of Gwen and Bruno is a Criminal."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gwen",
+      "profession": "Scientist",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-C2",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "D2"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among Gwen and Hannah."
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Hannah",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-D2",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "A3",
+          "B1"
+        ],
+        "right_cells": [
+          "B1"
+        ],
+        "operator": "GT",
+        "text": "There are more Criminals among Ivy and Bruno than around Bruno alone."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ivy",
+      "profession": "Scientist",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-A3",
+        "type": "FACT",
+        "target_cells": [
+          "B3"
+        ],
+        "value": "CRIMINAL",
+        "text": "Jonas is a Criminal."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Jonas",
+      "profession": "Singer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-B3",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "B3",
+          "C3"
+        ],
+        "text": "Jonas and Karl have different statuses."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Karl",
+      "profession": "Clerk",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-C3",
+        "type": "EXACTLY",
+        "target_cells": [
+          "C3",
+          "D3"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Karl and Lucy is a Criminal."
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Lucy",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-D3",
+        "type": "AT_MOST",
+        "target_cells": [
+          "A4",
+          "A1"
+        ],
+        "value": 1,
+        "text": "At most 1 of Milo and Abel is a Criminal."
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Milo",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-A4",
+        "type": "PARITY",
+        "target_cells": [
+          "A4",
+          "B4"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Milo and Nola."
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Nola",
+      "profession": "Judge",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-B4",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "A1"
+        ],
+        "right_cells": [
+          "C4",
+          "B1"
+        ],
+        "operator": "GT",
+        "text": "Abel's group has more Criminals than the group of Owen and Bruno."
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Owen",
+      "profession": "Coder",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_06_4X4-C4",
+        "type": "FACT",
+        "target_cells": [
+          "D4"
+        ],
+        "value": "CRIMINAL",
+        "text": "Priya is a Criminal."
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Priya",
+      "profession": "Judge",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_06_4X4-D4",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Abel is a Criminal."
+      }
+    }
+  ]
+}

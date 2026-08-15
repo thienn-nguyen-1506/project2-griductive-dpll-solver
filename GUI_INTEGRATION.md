@@ -1,4 +1,4 @@
-# Hướng dẫn nối thuật toán vào GUI
+# Tích hợp thuật toán vào GUI
 
 ## Ranh giới giữa các phần
 
@@ -48,58 +48,20 @@ Sau khi verdict được chứng minh, adapter mới trả `revealed=True`, stat
 clue mới và region của clue. `clue_references` phải là danh sách cell ID đã được
 chuẩn hóa như `("A1", "B1", "B2")`.
 
-## Khung adapter đề xuất
+## Adapter đang sử dụng
 
-```python
-from pathlib import Path
-
-from gui.models import (
-    ActionCode,
-    ActionResult,
-    CellView,
-    GamePhase,
-    GameView,
-    HintResult,
-    SolverMetrics,
-    Status,
-    TraceEntry,
-)
-
-
-class RealGameGateway:
-    def __init__(self, engine, agent):
-        self.engine = engine
-        self.agent = agent
-
-    def get_public_state(self) -> GameView:
-        # Chuyển public state của engine thành GameView.
-        raise NotImplementedError
-
-    def submit_verdict(self, cell_id: str, status: Status) -> ActionResult:
-        # Gọi engine/agent; không reveal nếu NOT_PROVABLE hoặc CONTRADICTED.
-        raise NotImplementedError
-
-    def get_hint(self) -> HintResult:
-        raise NotImplementedError
-
-    def auto_solve_step(self) -> ActionResult:
-        # Chọn một unsolved character forced theo row-major và xử lý một bước.
-        raise NotImplementedError
-
-    def restart(self) -> ActionResult:
-        raise NotImplementedError
-
-    def load_puzzle(self, path: Path) -> ActionResult:
-        raise NotImplementedError
-```
-
-Khi adapter hoàn tất, khởi động bằng:
+`RealGameGateway` đã được cài trong `gui/real_gateway.py`. `main.py` khởi động
+luồng thật bằng:
 
 ```python
 from gui.app import run_app
+from gui.real_gateway import RealGameGateway
 
-run_app(gateway=RealGameGateway(engine, agent))
+run_app(gateway=RealGameGateway())
 ```
+
+Gateway kiểm tra puzzle trước khi thay engine. Nếu file không hợp lệ, nó trả
+`ERROR` và giữ nguyên ván đang chơi.
 
 ## Ánh xạ kết quả suy luận
 

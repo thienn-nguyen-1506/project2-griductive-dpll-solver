@@ -1,0 +1,416 @@
+{
+  "schema_version": 1,
+  "id": "level_07_5x5",
+  "name": "Grand Case",
+  "size": 5,
+  "source": "Twenty-five unused characters combined from the six screenshot boards.",
+  "initial_revealed": [
+    "A1",
+    "B1",
+    "C1",
+    "D1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Dana",
+      "profession": "Guard",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-A1",
+        "type": "FACT",
+        "target_cells": [
+          "E1"
+        ],
+        "value": "INNOCENT",
+        "text": "Hazel is Innocent."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Dean",
+      "profession": "Cook",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-B1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "INNOCENT",
+        "text": "Dana is Innocent."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Derek",
+      "profession": "Singer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-C1",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Dean is a Criminal."
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Hank",
+      "profession": "Singer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-D1",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Dean is a Criminal."
+      }
+    },
+    {
+      "id": "E1",
+      "name": "Hazel",
+      "profession": "Singer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-E1",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "E1",
+          "A2"
+        ],
+        "text": "Hazel and Leo have different statuses."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Leo",
+      "profession": "Teacher",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-A2",
+        "type": "EXACTLY",
+        "target_cells": [
+          "A2",
+          "B2"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Leo and Liam is a Criminal."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Liam",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-B2",
+        "type": "AT_MOST",
+        "target_cells": [
+          "C2",
+          "B1"
+        ],
+        "value": 1,
+        "text": "At most 1 of Lucy and Dean is a Criminal."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Lucy",
+      "profession": "Coder",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-C2",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "D2"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among Lucy and Mara."
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Mara",
+      "profession": "Painter",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-D2",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B1"
+        ],
+        "right_cells": [
+          "E2",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Dean's group has more Criminals than the group of Mason and Dana."
+      }
+    },
+    {
+      "id": "E2",
+      "name": "Mason",
+      "profession": "Scientist",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-E2",
+        "type": "FACT",
+        "target_cells": [
+          "A3"
+        ],
+        "value": "CRIMINAL",
+        "text": "Mona is a Criminal."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Mona",
+      "profession": "Student",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-A3",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "A3",
+          "B3"
+        ],
+        "text": "Mona and Ned have different statuses."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Ned",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-B3",
+        "type": "EXACTLY",
+        "target_cells": [
+          "B3",
+          "C3"
+        ],
+        "value": 0,
+        "text": "Exactly 0 of Ned and Nola are Criminals."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Nola",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-C3",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "D3",
+          "A1"
+        ],
+        "value": 1,
+        "text": "At least 1 of Orla and Dana is a Criminal."
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Orla",
+      "profession": "Cook",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-D3",
+        "type": "PARITY",
+        "target_cells": [
+          "D3",
+          "E3"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Orla and Otis."
+      }
+    },
+    {
+      "id": "E3",
+      "name": "Otis",
+      "profession": "Scientist",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-E3",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B1"
+        ],
+        "right_cells": [
+          "A4",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Dean's group has more Criminals than the group of Paul and Dana."
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Paul",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-A4",
+        "type": "FACT",
+        "target_cells": [
+          "B4"
+        ],
+        "value": "INNOCENT",
+        "text": "Pete is Innocent."
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Pete",
+      "profession": "Singer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-B4",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "B4",
+          "C4"
+        ],
+        "text": "Pete and Queenie have different statuses."
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Queenie",
+      "profession": "Clerk",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-C4",
+        "type": "EXACTLY",
+        "target_cells": [
+          "C4",
+          "D4"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Queenie and Quilla are Criminals."
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Quilla",
+      "profession": "Builder",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-D4",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "E4",
+          "A1"
+        ],
+        "value": 1,
+        "text": "At least 1 of Rosa and Dana is a Criminal."
+      }
+    },
+    {
+      "id": "E4",
+      "name": "Rosa",
+      "profession": "Guard",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-E4",
+        "type": "PARITY",
+        "target_cells": [
+          "E4",
+          "A5"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among Rosa and Roy."
+      }
+    },
+    {
+      "id": "A5",
+      "name": "Roy",
+      "profession": "Student",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-A5",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B1"
+        ],
+        "right_cells": [
+          "B5",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Dean's group has more Criminals than the group of Ruby and Dana."
+      }
+    },
+    {
+      "id": "B5",
+      "name": "Ruby",
+      "profession": "Cook",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-B5",
+        "type": "FACT",
+        "target_cells": [
+          "C5"
+        ],
+        "value": "CRIMINAL",
+        "text": "Sam is a Criminal."
+      }
+    },
+    {
+      "id": "C5",
+      "name": "Sam",
+      "profession": "Officer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-C5",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "C5",
+          "D5"
+        ],
+        "text": "Sam and Senna have different statuses."
+      }
+    },
+    {
+      "id": "D5",
+      "name": "Senna",
+      "profession": "Student",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_07_5X5-D5",
+        "type": "EXACTLY",
+        "target_cells": [
+          "D5",
+          "E5"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Senna and Seth is a Criminal."
+      }
+    },
+    {
+      "id": "E5",
+      "name": "Seth",
+      "profession": "Teacher",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_07_5X5-E5",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Dean is a Criminal."
+      }
+    }
+  ]
+}
