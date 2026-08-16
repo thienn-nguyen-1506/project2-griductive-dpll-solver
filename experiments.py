@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import csv
 import json
-import os
 import sys
 import time
 from dataclasses import dataclass
@@ -37,6 +36,11 @@ from core.agent import (  # noqa: E402
     KnowledgeBaseSnapshot,
 )
 from core.encoder import CNFEncoder, Clue  # noqa: E402
+
+try:
+    from core.puzzle import load_puzzle  # noqa: E402
+except ImportError:
+    load_puzzle = None
 
 
 # ---------------------------------------------------------------------------
@@ -65,15 +69,33 @@ class BenchmarkResult:
 
 
 # ---------------------------------------------------------------------------
-# JSON Loader via CNFEncoder
+# JSON Loader via CNFEncoder / load_puzzle
 # ---------------------------------------------------------------------------
 
 def _load_puzzle_from_json(json_path: Path) -> Tuple[str, KnowledgeBaseSnapshot, str]:
     """Load a puzzle JSON file and encode it into CNF using CNFEncoder."""
+    # 1. Thử dùng module loader chính thức nếu khả dụng
+    if load_puzzle is not None:
+        try:
+            puzzle = load_puzzle(json_path)
+            encoder = CNFEncoder(character_ids=list(puzzle.cell_ids))
+            snapshot = encoder.build_snapshot(
+                all_cell_ids=list(puzzle.cell_ids),
+                clues=list(puzzle.clues),
+                active_clue_ids=[c.id for c in puzzle.clues],
+                known_statuses={},
+            )
+            name = puzzle.name if puzzle.name else f"Puzzle {json_path.stem}"
+            grid_size = f"{puzzle.size}x{puzzle.size}"
+            return name, snapshot, grid_size
+        except Exception:
+            pass  # Fallback sang tự giải mã thủ công bên dưới nếu có lỗi schema
+
+    # 2. Xử lý nạp JSON thủ công linh hoạt
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # 1. Trích xuất kích thước lưới (Đọc 'grid' hoặc 'size' từ root)
+    # Lấy kích thước lưới
     grid_data = data.get("grid", {})
     if isinstance(grid_data, dict) and ("rows" in grid_data or "cols" in grid_data):
         rows = grid_data.get("rows", 3)
@@ -81,16 +103,19 @@ def _load_puzzle_from_json(json_path: Path) -> Tuple[str, KnowledgeBaseSnapshot,
     else:
         size = data.get("size", 3)
         rows = cols = size
-
     grid_size = f"{rows}x{cols}"
 
-    # 2. Trích xuất danh sách ô (cell_ids)
+    # Lấy danh sách ô (cell_ids)
+    cells_list = data.get("cells", [])
     if isinstance(grid_data, dict) and "cells" in grid_data:
-        cell_ids = [c["id"] for c in grid_data["cells"] if isinstance(c, dict) and "id" in c]
+        cells_list = grid_data["cells"]
+
+    if cells_list:
+        cell_ids = [c["id"] for c in cells_list if isinstance(c, dict) and "id" in c]
     else:
         cell_ids = [f"{chr(65 + c)}{r + 1}" for r in range(rows) for c in range(cols)]
 
-    # 3. Trích xuất manh mối (clues)
+    # Lấy danh sách manh mối (hỗ trợ cả root clues, grid clues và clue bên trong từng ô cell)
     raw_clues = (
         data.get("clues")
         or data.get("initial_clues")
@@ -98,26 +123,39 @@ def _load_puzzle_from_json(json_path: Path) -> Tuple[str, KnowledgeBaseSnapshot,
         or []
     )
 
-    # Nếu không có clue (file mock của GUI), báo lỗi để chuyển sang synthetic benchmark
+    if not raw_clues and cells_list:
+        for cell in cells_list:
+            if isinstance(cell, dict) and cell.get("clue"):
+                raw_clues.append(cell["clue"])
+
     if not raw_clues:
-        raise ValueError(f"File '{json_path.name}' không chứa clues (file GUI mock).")
+        raise ValueError(f"File '{json_path.name}' không chứa clues hợp lệ.")
 
     clues: List[Clue] = []
     for idx, c in enumerate(raw_clues):
         if not isinstance(c, dict):
             continue
+
+        target_cells = c.get("target_cells") or c.get("targets") or []
+        if not target_cells and c.get("target"):
+            target_cells = [c["target"]]
+
+        val = c.get("value") if c.get("value") is not None else c.get("count")
+
         clues.append(
             Clue(
                 id=c.get("id", f"clue_{idx}"),
-                type=c.get("type"),
-                target=c.get("target"),
-                targets=c.get("targets", []),
-                value=c.get("value"),
-                count=c.get("count"),
+                type=c.get("type", ""),
+                target_cells=target_cells,
+                value=val,
+                target_status=c.get("target_status", "CRIMINAL"),
+                text=c.get("text", ""),
+                left_cells=c.get("left_cells", []),
+                right_cells=c.get("right_cells", []),
+                operator=c.get("operator", ""),
             )
         )
 
-    # 4. Mã hóa bằng CNFEncoder
     encoder = CNFEncoder(character_ids=cell_ids)
     snapshot = encoder.build_snapshot(
         all_cell_ids=cell_ids,
@@ -126,7 +164,7 @@ def _load_puzzle_from_json(json_path: Path) -> Tuple[str, KnowledgeBaseSnapshot,
         known_statuses={},
     )
 
-    name = f"Puzzle {json_path.stem}"
+    name = data.get("name") or f"Puzzle {json_path.stem}"
     return name, snapshot, grid_size
 
 
@@ -325,15 +363,11 @@ def main() -> None:
     print("=" * 70)
 
     puzzles_dir = _PROJECT_ROOT / "puzzles"
-    demo_files = [
-        puzzles_dir / "gui_demo_3x3.json",
-        puzzles_dir / "gui_demo_4x4.json",
-        puzzles_dir / "gui_demo_5x5.json",
-    ]
+    demo_files = sorted(puzzles_dir.glob("level_*.json"))
 
     benchmarks_to_run = []
 
-    # Thử nạp từ các file JSON puzzle thực tế qua CNFEncoder
+    # Nạp từ các file JSON puzzle màn chơi thực tế
     for p_path in demo_files:
         if p_path.exists():
             try:
@@ -342,9 +376,9 @@ def main() -> None:
             except Exception as e:
                 print(f"[Bỏ qua {p_path.name}] {e}")
 
-    # Fallback sang synthetic benchmarks nếu không tìm thấy file JSON chứa clue hợp lệ
+    # Fallback sang synthetic benchmarks nếu không tìm thấy màn chơi JSON
     if not benchmarks_to_run:
-        print("\n[Thông báo] Đang chạy bộ synthetic benchmarks chuẩn với đầy đủ các clause CNF...")
+        print("\n[Thông báo] Đang chạy bộ synthetic benchmarks chuẩn...")
         benchmarks_to_run = [
             _generate_3x3_synthetic(),
             _generate_4x4_synthetic(),
@@ -373,7 +407,7 @@ def main() -> None:
         print(f"  Unique:        {br.is_unique}")
         print(f"  Runtime:       {br.total_runtime_ms:.3f} ms")
 
-    # Export
+    # Export kết quả out file CSV và Markdown
     out_dir = _PROJECT_ROOT / "output" / "experiments"
     export_csv(results, out_dir / "results.csv")
     export_markdown(results, out_dir / "results.md")

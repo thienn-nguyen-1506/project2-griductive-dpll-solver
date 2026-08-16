@@ -1,4 +1,9 @@
 Name,Grid,Primary Vars,Aux Vars,Clauses,SAT Calls,Decisions,Propagations,Backtracks,Deduction Steps,Forced,Unknown,Consistent,Unique,Runtime (ms)
-Synthetic 3x3,3x3,9,0,12,20,8,150,1,9,5,4,True,False,0.770
-Synthetic 4x4,4x4,16,0,21,29,0,344,0,16,16,0,True,True,0.946
-Synthetic 5x5,5x5,25,0,25,43,0,775,0,25,25,0,True,True,2.061
+Festival Case,3x3,9,0,13,19,0,135,0,9,9,0,True,True,0.719
+Coffee Case,3x3,9,0,18,18,0,126,0,9,9,0,True,True,0.590
+School Case,3x3,9,0,18,18,26,140,15,9,9,0,True,True,0.723
+Bakery Case,4x4,16,0,29,28,22,316,11,16,15,1,True,False,1.491
+Storm Case,4x4,16,0,29,24,0,258,0,16,15,1,True,False,0.955
+Cat Case,4x4,16,0,29,26,27,281,9,16,15,1,True,False,1.084
+Grand Case,5x5,25,0,54,43,1,740,0,25,23,2,True,False,6.723
+Midnight Case,5x5,25,0,59,42,0,735,0,25,24,1,True,False,4.574
