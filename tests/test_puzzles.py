@@ -19,8 +19,8 @@ PUZZLE_FILES = sorted((PROJECT_ROOT / "puzzles").glob("level_*.json"))
 class TestOfficialPuzzles(unittest.TestCase):
     def test_expected_level_mix(self) -> None:
         puzzles = [load_puzzle(path) for path in PUZZLE_FILES]
-        self.assertEqual(len(puzzles), 7)
-        self.assertEqual(Counter(puzzle.size for puzzle in puzzles), {3: 3, 4: 3, 5: 1})
+        self.assertEqual(len(puzzles), 8)
+        self.assertEqual(Counter(puzzle.size for puzzle in puzzles), {3: 3, 4: 3, 5: 2})
 
     def test_every_level_is_true_unique_and_no_guess(self) -> None:
         for path in PUZZLE_FILES:

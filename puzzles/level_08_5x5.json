@@ -1,0 +1,416 @@
+{
+  "schema_version": 1,
+  "id": "level_08_5x5",
+  "name": "Midnight Case",
+  "size": 5,
+  "source": "Original 5x5 logical puzzle created for the project.",
+  "initial_revealed": [
+    "A1",
+    "B1",
+    "C1",
+    "D1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Ada",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-A1",
+        "type": "FACT",
+        "target_cells": [
+          "E1"
+        ],
+        "value": "INNOCENT",
+        "text": "Eliza is Innocent."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bella",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-B1",
+        "type": "FACT",
+        "target_cells": [
+          "A1"
+        ],
+        "value": "INNOCENT",
+        "text": "Ada is Innocent."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cara",
+      "profession": "Painter",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-C1",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Bella is a Criminal."
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Dean",
+      "profession": "Cook",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-D1",
+        "type": "FACT",
+        "target_cells": [
+          "C1"
+        ],
+        "value": "INNOCENT",
+        "text": "Cara is Innocent."
+      }
+    },
+    {
+      "id": "E1",
+      "name": "Eliza",
+      "profession": "Mechanic",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-E1",
+        "type": "SAME",
+        "target_cells": [
+          "E1",
+          "A2"
+        ],
+        "text": "Eliza and Finn have the same status."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Finn",
+      "profession": "Doctor",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-A2",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "A2",
+          "B2"
+        ],
+        "text": "Finn and Gina have different statuses."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Gina",
+      "profession": "Scientist",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-B2",
+        "type": "EXACTLY",
+        "target_cells": [
+          "B2",
+          "C2"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Gina and Hazel is a Criminal."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Hazel",
+      "profession": "Singer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-C2",
+        "type": "AT_MOST",
+        "target_cells": [
+          "C2",
+          "D2"
+        ],
+        "value": 0,
+        "text": "At most 0 of Hazel and Ivy are Criminals."
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Ivy",
+      "profession": "Scientist",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-D2",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "B1",
+          "E2"
+        ],
+        "value": 2,
+        "text": "At least 2 of Bella and James are Criminals."
+      }
+    },
+    {
+      "id": "E2",
+      "name": "James",
+      "profession": "Teacher",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-E2",
+        "type": "PARITY",
+        "target_cells": [
+          "E2",
+          "A3"
+        ],
+        "value": "EVEN",
+        "text": "There is an even number of Criminals among James and Karl."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Karl",
+      "profession": "Teacher",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-A3",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B1"
+        ],
+        "right_cells": [
+          "B3",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Bella's group has more Criminals than the group of Leo and Ada."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Leo",
+      "profession": "Detective",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-B3",
+        "type": "FACT",
+        "target_cells": [
+          "C3"
+        ],
+        "value": "CRIMINAL",
+        "text": "Mara is a Criminal."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Mara",
+      "profession": "Painter",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-C3",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "C3",
+          "D3"
+        ],
+        "text": "Mara and Ned have different statuses."
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Ned",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-D3",
+        "type": "EXACTLY",
+        "target_cells": [
+          "D3",
+          "E3"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Ned and Nola is a Criminal."
+      }
+    },
+    {
+      "id": "E3",
+      "name": "Nola",
+      "profession": "Judge",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-E3",
+        "type": "AT_MOST",
+        "target_cells": [
+          "A4",
+          "A1"
+        ],
+        "value": 0,
+        "text": "At most 0 of Opal and Ada are Criminals."
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Opal",
+      "profession": "Singer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-A4",
+        "type": "PARITY",
+        "target_cells": [
+          "A4",
+          "B4"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Opal and Paul."
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Paul",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-B4",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B4"
+        ],
+        "right_cells": [
+          "C4",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Paul's group has more Criminals than the group of Quilla and Ada."
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Quilla",
+      "profession": "Mechanic",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-C4",
+        "type": "SAME",
+        "target_cells": [
+          "C4",
+          "D4"
+        ],
+        "text": "Quilla and Rosa have the same status."
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Rosa",
+      "profession": "Officer",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-D4",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "B1",
+          "E4"
+        ],
+        "value": 2,
+        "text": "At least 2 of Bella and Sam are Criminals."
+      }
+    },
+    {
+      "id": "E4",
+      "name": "Sam",
+      "profession": "Officer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-E4",
+        "type": "EXACTLY",
+        "target_cells": [
+          "E4",
+          "A5"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Sam and Seth are Criminals."
+      }
+    },
+    {
+      "id": "A5",
+      "name": "Seth",
+      "profession": "Farmer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-A5",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "A5",
+          "B5"
+        ],
+        "text": "Seth and Tess have different statuses."
+      }
+    },
+    {
+      "id": "B5",
+      "name": "Tess",
+      "profession": "Astronaut",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-B5",
+        "type": "PARITY",
+        "target_cells": [
+          "B5",
+          "C5"
+        ],
+        "value": "ODD",
+        "text": "There is an odd number of Criminals among Tess and Theo."
+      }
+    },
+    {
+      "id": "C5",
+      "name": "Theo",
+      "profession": "Farmer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-C5",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "C5"
+        ],
+        "right_cells": [
+          "D5",
+          "A1"
+        ],
+        "operator": "GT",
+        "text": "Theo's group has more Criminals than the group of Vera and Ada."
+      }
+    },
+    {
+      "id": "D5",
+      "name": "Vera",
+      "profession": "Coder",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_08_5X5-D5",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "D5",
+          "E5"
+        ],
+        "text": "Vera and Zane have different statuses."
+      }
+    },
+    {
+      "id": "E5",
+      "name": "Zane",
+      "profession": "Pilot",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_08_5X5-E5",
+        "type": "FACT",
+        "target_cells": [
+          "B1"
+        ],
+        "value": "CRIMINAL",
+        "text": "Bella is a Criminal."
+      }
+    }
+  ]
+}

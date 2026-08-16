@@ -34,6 +34,6 @@ source .venv/bin/activate
 python main.py
 ```
 
-Trong GUI, chọn **Choose Level** để mở một trong bảy màn tích hợp sẵn. Chọn
+Trong GUI, chọn **Choose Level** để mở một trong tám màn tích hợp sẵn. Chọn
 **Import Puzzle** khi cần nạp một file `level_*.json` bên ngoài. Các file
 `gui_demo_*.json` là dữ liệu Mock cũ và không được Real Gateway chấp nhận.

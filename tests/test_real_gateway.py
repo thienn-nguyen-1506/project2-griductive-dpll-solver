@@ -18,12 +18,12 @@ class TestRealGameGateway(unittest.TestCase):
     def test_implements_gui_contract(self) -> None:
         self.assertIsInstance(self.gateway, GameGateway)
 
-    def test_builtin_catalog_lists_seven_levels(self) -> None:
+    def test_builtin_catalog_lists_eight_levels(self) -> None:
         options = self.gateway.list_puzzles()
-        self.assertEqual(len(options), 7)
+        self.assertEqual(len(options), 8)
         self.assertEqual(
             [option.size for option in options],
-            [3, 3, 3, 4, 4, 4, 5],
+            [3, 3, 3, 4, 4, 4, 5, 5],
         )
         self.assertTrue(all(option.path.exists() for option in options))
 
@@ -93,6 +93,7 @@ class TestRealGameGateway(unittest.TestCase):
             "level_01_3x3.json": 3,
             "level_04_4x4.json": 4,
             "level_07_5x5.json": 5,
+            "level_08_5x5.json": 5,
         }
         for filename, size in expected.items():
             with self.subTest(filename=filename):

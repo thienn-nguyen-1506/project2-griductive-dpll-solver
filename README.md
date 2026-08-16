@@ -79,7 +79,7 @@ python -m pip install -r requirements.txt
 - `gui/real_gateway.py`: adapter nối GUI với Game Engine và Logic Agent thật.
 - `gui/mock_engine.py`: dữ liệu mô phỏng chỉ còn dùng cho unit test GUI.
 - `core/puzzle.py`: loader và validator của puzzle chính thức.
-- `puzzles/level_*.json`: bảy puzzle logic đã được kiểm chứng.
+- `puzzles/level_*.json`: tám puzzle logic đã được kiểm chứng.
 - `tests/`: kiểm tra encoder, DPLL, agent, puzzle và tích hợp gateway.
 - `GUI_STATUS.md`: những phần GUI đã/chưa có.
 - `GUI_INTEGRATION.md`: hướng dẫn cho các thành viên nối Engine/Agent vào GUI.
