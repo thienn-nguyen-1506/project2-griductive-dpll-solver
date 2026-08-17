@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Tuple
 
 from core.agent import DeductiveAgent
-from core.encoder import CNFEncoder, Clue, ClueEvaluator
+from core.encoder import CNFEncoder, Clue, ClueEvaluator, RegionHelper
 
 
 CORE_CLUE_TYPES = {
@@ -112,10 +112,49 @@ def _validate_distinct_region(
     return region
 
 
+def _parse_region_expression(
+    raw_region: Any,
+    *,
+    clue_id: str,
+    grid_size: int,
+    valid_cell_ids: set[str],
+) -> tuple[list[str], str, Any]:
+    data = _require_mapping(raw_region, f"{clue_id}.region")
+    kind = _require_string(
+        data.get("kind"), f"{clue_id}.region.kind"
+    ).upper()
+
+    if kind == "ROW":
+        value = data.get("row")
+    elif kind == "COLUMN":
+        value = data.get("column")
+    elif kind == "NEIGHBORS":
+        value = data.get("cell")
+    elif kind == "EXPLICIT":
+        value = data.get("cells")
+    else:
+        raise ValueError(
+            f"{clue_id}.region.kind must be ROW, COLUMN, NEIGHBORS, "
+            "or EXPLICIT."
+        )
+
+    try:
+        resolved = RegionHelper.resolve(grid_size, kind, value)
+    except ValueError as error:
+        raise ValueError(f"{clue_id}.region is invalid: {error}") from error
+    resolved = _validate_distinct_region(
+        resolved,
+        label=f"{clue_id}.region",
+        valid_cell_ids=valid_cell_ids,
+    )
+    return resolved, kind, value
+
+
 def _parse_clue(
     raw_clue: Any,
     *,
     owner_id: str,
+    grid_size: int,
     valid_cell_ids: set[str],
 ) -> Clue:
     data = _require_mapping(raw_clue, f"clue for {owner_id}")
@@ -133,6 +172,26 @@ def _parse_clue(
     target_status = str(data.get("target_status") or "CRIMINAL").upper()
     operator = str(data.get("operator") or "").upper()
     text = str(data.get("text") or "")
+    region_kind = None
+    region_value = None
+
+    region_expression = data.get("region")
+    counting_types = {"EXACTLY", "AT_LEAST", "AT_MOST", "PARITY"}
+    if region_expression is not None:
+        if clue_type not in counting_types:
+            raise ValueError(
+                f"{clue_id}.region is only valid for a regional clue."
+            )
+        if target_cells:
+            raise ValueError(
+                f"{clue_id} must use either target_cells or region, not both."
+            )
+        target_cells, region_kind, region_value = _parse_region_expression(
+            region_expression,
+            clue_id=clue_id,
+            grid_size=grid_size,
+            valid_cell_ids=valid_cell_ids,
+        )
 
     if target_status not in VALID_STATUSES:
         raise ValueError(f"{clue_id} has invalid target_status {target_status}.")
@@ -206,6 +265,8 @@ def _parse_clue(
         value=value,
         target_status=target_status,
         text=text,
+        region_kind=region_kind,
+        region_value=region_value,
         left_cells=left_cells,
         right_cells=right_cells,
         operator=operator,
@@ -252,6 +313,7 @@ def load_puzzle(path: Path | str) -> PuzzleDefinition:
         clue = _parse_clue(
             cell_data.get("clue"),
             owner_id=cell_id,
+            grid_size=size,
             valid_cell_ids=expected_set,
         )
         if clue.id in clue_ids:
@@ -297,7 +359,7 @@ def validate_puzzle(puzzle: PuzzleDefinition) -> PuzzleValidationReport:
     all_ids = list(puzzle.cell_ids)
     all_clues = list(puzzle.clues)
     cell_map = puzzle.cell_map
-    encoder = CNFEncoder(character_ids=all_ids)
+    encoder = CNFEncoder(character_ids=all_ids, grid_size=puzzle.size)
     agent = DeductiveAgent()
 
     known_statuses = {

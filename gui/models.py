@@ -59,6 +59,70 @@ class CellView:
 
 
 @dataclass(frozen=True)
+class VerdictFeedback:
+    """Presentation-neutral content for one rejected manual verdict."""
+
+    title: str
+    icon: str
+    tone: str
+    main: str
+    advice: str
+    button: str
+
+
+def build_verdict_feedback(
+    action_code: ActionCode,
+    cell: CellView,
+    attempted_status: Status,
+    message: str | None = None,
+) -> VerdictFeedback:
+    """Return distinct content for NOT_PROVABLE and CONTRADICTED."""
+    attempted = attempted_status.value.title()
+    opposite = (
+        Status.INNOCENT.value.title()
+        if attempted_status is Status.CRIMINAL
+        else Status.CRIMINAL.value.title()
+    )
+    name = cell.name or cell.cell_id
+
+    if action_code is ActionCode.NOT_PROVABLE:
+        return VerdictFeedback(
+            title="Not Provable Yet",
+            icon="?",
+            tone="warning",
+            main=(
+                f"The current KB still allows both possibilities for {name}. "
+                f"The verdict {attempted} is not provable yet."
+            ),
+            advice="Reveal more clues or use Hint before trying this card again.",
+            button="Review clues",
+        )
+    if action_code is ActionCode.CONTRADICTED:
+        return VerdictFeedback(
+            title="Verdict Contradicted",
+            icon="✕",
+            tone="error",
+            main=(
+                f"The current KB proves {name} is {opposite}. "
+                f"The verdict {attempted} is contradicted."
+            ),
+            advice=(
+                "The card stays hidden, but the opposite verdict is "
+                "logically forced."
+            ),
+            button="Try the opposite",
+        )
+    return VerdictFeedback(
+        title="Verdict Rejected",
+        icon="!",
+        tone="warning",
+        main=message or "The verdict could not be accepted.",
+        advice="Review the current knowledge base and try again.",
+        button="Keep looking",
+    )
+
+
+@dataclass(frozen=True)
 class SolverMetrics:
     """Optional statistics supplied by a real SAT/DPLL implementation."""
 
@@ -79,6 +143,9 @@ class TraceEntry:
     sat_queries: tuple[str, ...] = ()
     verdict: str | None = None
     revealed_clue_id: str | None = None
+    revealed_clue_type: str | None = None
+    revealed_clue_text: str | None = None
+    revealed_clue_references: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

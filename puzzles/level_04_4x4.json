@@ -3,7 +3,7 @@
   "id": "level_04_4x4",
   "name": "Bakery Case",
   "size": 4,
-  "source": "Screenshot board: Abel to Priya (first four rows).",
+  "source": "Redesigned non-linear logic puzzle based on the original screenshot characters.",
   "initial_revealed": [
     "A1",
     "B1",
@@ -21,12 +21,12 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-A1",
-        "type": "FACT",
+        "type": "SAME",
         "target_cells": [
-          "D1"
+          "D4",
+          "A2"
         ],
-        "value": "CRIMINAL",
-        "text": "Dean is a Criminal."
+        "text": "Priya and Evan have the same status."
       }
     },
     {
@@ -36,12 +36,15 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-B1",
-        "type": "FACT",
-        "target_cells": [
-          "A1"
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "A2"
         ],
-        "value": "CRIMINAL",
-        "text": "Abel is a Criminal."
+        "right_cells": [
+          "B1"
+        ],
+        "operator": "EQ",
+        "text": "The region containing Evan has the same Criminal count as the region containing Bruno."
       }
     },
     {
@@ -51,43 +54,42 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-C1",
-        "type": "FACT",
+        "type": "DIFFERENT",
         "target_cells": [
-          "A1"
+          "D1",
+          "B3"
         ],
-        "value": "CRIMINAL",
-        "text": "Abel is a Criminal."
+        "text": "Dean and James have different statuses."
       }
     },
     {
       "id": "D1",
       "name": "Dean",
       "profession": "Student",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-D1",
-        "type": "SAME",
+        "type": "DIFFERENT",
         "target_cells": [
-          "D1",
-          "A2"
+          "B2",
+          "D3"
         ],
-        "text": "Dean and Evan have the same statuses."
+        "text": "Franz and Leo have different statuses."
       }
     },
     {
       "id": "A2",
       "name": "Evan",
       "profession": "Clerk",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-A2",
-        "type": "EXACTLY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "A2",
-          "B2"
+          "C2",
+          "A4"
         ],
-        "value": 2,
-        "text": "Exactly 2 of Evan and Franz are Criminals."
+        "text": "Gus and Mason have different statuses."
       }
     },
     {
@@ -97,13 +99,12 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-B2",
-        "type": "AT_MOST",
+        "type": "SAME",
         "target_cells": [
-          "C2",
-          "A1"
+          "D2",
+          "C4"
         ],
-        "value": 1,
-        "text": "At most 1 of Gus and Abel is a Criminal."
+        "text": "Hazel and Owen have the same status."
       }
     },
     {
@@ -113,13 +114,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-C2",
-        "type": "PARITY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C2",
-          "D2"
+          "C3",
+          "B4"
         ],
-        "value": "ODD",
-        "text": "There is an odd number of Criminals among Gus and Hazel."
+        "text": "Kira and Ned have different statuses."
       }
     },
     {
@@ -129,62 +129,61 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-D2",
-        "type": "COUNT_COMPARE",
-        "left_cells": [
-          "A1"
-        ],
-        "right_cells": [
-          "A3",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "A1",
           "B1"
         ],
-        "operator": "GT",
-        "text": "Abel's group has more Criminals than the group of Ike and Bruno."
+        "text": "Abel and Bruno have different statuses."
       }
     },
     {
       "id": "A3",
       "name": "Ike",
       "profession": "Farmer",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-A3",
-        "type": "FACT",
-        "target_cells": [
-          "B3"
-        ],
-        "value": "INNOCENT",
-        "text": "James is Innocent."
+        "type": "EXACTLY",
+        "region": {
+          "kind": "NEIGHBORS",
+          "cell": "B2"
+        },
+        "value": 4,
+        "text": "Exactly 4 neighbors of Franz are Criminals."
       }
     },
     {
       "id": "B3",
       "name": "James",
       "profession": "Doctor",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-B3",
-        "type": "SAME",
+        "type": "PARITY",
         "target_cells": [
-          "B3",
-          "C3"
+          "C2",
+          "A1",
+          "B1",
+          "C1"
         ],
-        "text": "James and Kira have the same statuses."
+        "value": "ODD",
+        "text": "An odd number of Gus, Abel, Bruno, Cody are Criminals."
       }
     },
     {
       "id": "C3",
       "name": "Kira",
       "profession": "Doctor",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-C3",
-        "type": "EXACTLY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C3",
-          "D3"
+          "A1",
+          "B1"
         ],
-        "value": 0,
-        "text": "Exactly 0 of Kira and Leo are Criminals."
+        "text": "Abel and Bruno have different statuses."
       }
     },
     {
@@ -194,13 +193,15 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-D3",
-        "type": "AT_LEAST",
-        "target_cells": [
-          "A4",
-          "B1"
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "C3"
         ],
-        "value": 1,
-        "text": "At least 1 of Mason and Bruno is a Criminal."
+        "right_cells": [
+          "A1"
+        ],
+        "operator": "EQ",
+        "text": "The region containing Kira has the same Criminal count as the region containing Abel."
       }
     },
     {
@@ -210,13 +211,15 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-A4",
-        "type": "PARITY",
+        "type": "AT_LEAST",
         "target_cells": [
-          "A4",
-          "B4"
+          "B2",
+          "A1",
+          "B1",
+          "C1"
         ],
-        "value": "ODD",
-        "text": "There is an odd number of Criminals among Mason and Ned."
+        "value": 2,
+        "text": "At least 2 of Franz, Abel, Bruno, Cody are Criminals."
       }
     },
     {
@@ -226,16 +229,15 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-B4",
-        "type": "COUNT_COMPARE",
-        "left_cells": [
-          "C4",
-          "B1"
+        "type": "EXACTLY",
+        "target_cells": [
+          "D2",
+          "A1",
+          "B1",
+          "C1"
         ],
-        "right_cells": [
-          "B1"
-        ],
-        "operator": "GT",
-        "text": "There are more Criminals among Owen and Bruno than around Bruno alone."
+        "value": 2,
+        "text": "Exactly 2 of Hazel, Abel, Bruno, Cody are Criminals."
       }
     },
     {
@@ -245,12 +247,15 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_04_4X4-C4",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
-          "D4"
+          "A3",
+          "A1",
+          "B1",
+          "C1"
         ],
-        "value": "INNOCENT",
-        "text": "Priya is Innocent."
+        "value": 2,
+        "text": "Exactly 2 of Ike, Abel, Bruno, Cody are Criminals."
       }
     },
     {
@@ -260,12 +265,15 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_04_4X4-D4",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
-          "A1"
+          "D1",
+          "A1",
+          "B1",
+          "C1"
         ],
-        "value": "CRIMINAL",
-        "text": "Abel is a Criminal."
+        "value": 1,
+        "text": "Exactly 1 of Dean, Abel, Bruno, Cody are Criminals."
       }
     }
   ]

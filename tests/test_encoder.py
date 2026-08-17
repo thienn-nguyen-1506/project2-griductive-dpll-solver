@@ -41,6 +41,51 @@ class TestCNFEncoder(unittest.TestCase):
         )
         self.assertEqual(len(neighbors_ortho), 4)
 
+        self.assertEqual(
+            RegionHelper.resolve(3, "ROW", 2),
+            ["A2", "B2", "C2"],
+        )
+        self.assertEqual(
+            RegionHelper.resolve(3, "COLUMN", "B"),
+            ["B1", "B2", "B3"],
+        )
+        self.assertEqual(
+            set(RegionHelper.resolve(3, "NEIGHBORS", "A1")),
+            {"A2", "B1", "B2"},
+        )
+        self.assertEqual(
+            RegionHelper.resolve(3, "EXPLICIT", ["A1", "C3"]),
+            ["A1", "C3"],
+        )
+
+    def test_encoder_validates_structured_region_resolution(self) -> None:
+        cell_ids = [
+            f"{column}{row}"
+            for row in range(1, 4)
+            for column in "ABC"
+        ]
+        encoder = CNFEncoder(character_ids=cell_ids, grid_size=3)
+        clue = Clue(
+            id="row-clue",
+            type="EXACTLY",
+            target_cells=["A2", "B2", "C2"],
+            region_kind="ROW",
+            region_value=2,
+            value=1,
+        )
+        self.assertTrue(encoder.encode_clue(clue))
+
+        mismatched = Clue(
+            id="bad-row-clue",
+            type="EXACTLY",
+            target_cells=["A1", "B1", "C1"],
+            region_kind="ROW",
+            region_value=2,
+            value=1,
+        )
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            encoder.encode_clue(mismatched)
+
     def test_clue_post_init_and_legacy_support(self) -> None:
         """Kiểm tra tính tương thích ngược và tự động khởi tạo thuộc tính của Clue."""
         clue = Clue(clue_type="EXACTLY", region=["A1", "A2"], k=1)
@@ -120,15 +165,58 @@ class TestCNFEncoder(unittest.TestCase):
         clauses_diff = self.encoder.encode_clue(clue_diff)
         self.assertGreaterEqual(len(clauses_diff), 2)
 
-    def test_encode_edge_cases_unsat(self) -> None:
-        """Kiểm tra các trường hợp không thể thỏa mãn (UNSAT) trả về [[ ]]."""
-        # AT_LEAST k=5 cho 1 ô -> UNSAT
+    def test_rejects_invalid_cardinality_bounds(self) -> None:
+        """Cardinality values outside the region bounds are invalid input."""
         c_unsat1 = Clue(type="AT_LEAST", target_cells=["A1"], value=5)
-        self.assertEqual(self.encoder.encode_clue(c_unsat1), [[]])
+        with self.assertRaisesRegex(ValueError, "region size"):
+            self.encoder.encode_clue(c_unsat1)
 
-        # AT_MOST k=-1 cho 1 ô -> UNSAT
         c_unsat2 = Clue(type="AT_MOST", target_cells=["A1"], value=-1)
-        self.assertEqual(self.encoder.encode_clue(c_unsat2), [[]])
+        with self.assertRaisesRegex(ValueError, "region size"):
+            self.encoder.encode_clue(c_unsat2)
+
+    def test_rejects_unknown_cells_and_invalid_statuses(self) -> None:
+        """The reusable encoder must not silently create invalid variables."""
+        with self.assertRaisesRegex(ValueError, "unknown cells"):
+            self.encoder.encode_clue(
+                Clue(type="FACT", target_cells=["Z9"], value="INNOCENT")
+            )
+
+        with self.assertRaisesRegex(ValueError, "CRIMINAL or INNOCENT"):
+            self.encoder.encode_known_statuses({"A1": "MAYBE"})
+
+        self.assertNotIn("Z9", self.encoder.cell_to_var)
+
+    def test_rejects_bad_clue_shape_and_unsupported_type(self) -> None:
+        with self.assertRaisesRegex(ValueError, "exactly 2"):
+            self.encoder.encode_clue(
+                Clue(type="SAME", target_cells=["A1"])
+            )
+
+        with self.assertRaisesRegex(ValueError, "distinct"):
+            self.encoder.encode_clue(
+                Clue(type="EXACTLY", target_cells=["A1", "A1"], value=1)
+            )
+
+        with self.assertRaisesRegex(ValueError, "unsupported clue type"):
+            self.encoder.encode_clue(
+                Clue(type="MAGIC", target_cells=["A1"])
+            )
+
+    def test_snapshot_rejects_unknown_active_clue(self) -> None:
+        clue = Clue(
+            id="known-clue",
+            type="FACT",
+            target_cells=["A1"],
+            value="CRIMINAL",
+        )
+        with self.assertRaisesRegex(ValueError, "unknown clues"):
+            self.encoder.build_snapshot(
+                all_cell_ids=self.cell_ids,
+                clues=[clue],
+                active_clue_ids=["missing-clue"],
+                known_statuses={},
+            )
 
     def test_extension_encodings_match_their_semantics(self) -> None:
         """PARITY and COUNT_COMPARE CNF agree with direct evaluation."""

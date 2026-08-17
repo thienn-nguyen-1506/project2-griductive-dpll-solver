@@ -22,6 +22,7 @@ from .models import (
     PuzzleOption,
     Status,
     TraceEntry,
+    build_verdict_feedback,
 )
 
 ctk.set_appearance_mode("Dark")
@@ -57,34 +58,12 @@ theme.ERROR            = ("#e11d48", "#fb7185")
 COLOR_TEXT_MAIN       = ("#0f172a", "#fafafa")  # Chữ trắng bạc sáng
 COLOR_TEXT_MUTED      = ("#64748b", "#a1a1aa")  # Chữ phụ xám trung tính
 COLOR_ACTIVE_SELECTED = ("#334155", "#ffffff")  # Viền chọn xám bạc
-COLOR_TARGET_PERSON   = ("#d97706", "#fbbf24")  # Vàng Amber
-COLOR_RELATION       = ("#2563eb", "#38bdf8")  # Xanh Lam Electric (Cyan) sáng bừng khi chọn neighbor
-COLOR_SCOPE          = ("#7c3aed", "#a855f7")  # Tím Neon
+COLOR_RELATION        = ("#2563eb", "#38bdf8")  # Xanh Lam Electric (Cyan)
 
 COLOR_DIMMED_BG      = ("#cbd5e1", "#27272a")
 COLOR_DIMMED_TEXT    = ("#94a3b8", "#71717a")
 
 _AVATAR_CACHE: dict[tuple[int, int, bool], ctk.CTkImage] = {}
-
-
-def get_adjacent_neighbors(cell_id: str, max_size: int = 5) -> list[str]:
-    """Tính toán danh sách ID của 8 ô xung quanh (hàng xóm) của cell_id."""
-    col_char, row_str = cell_id[0], cell_id[1:]
-    col_idx = ord(col_char.upper()) - ord('A')
-    try:
-        row_idx = int(row_str)
-    except ValueError:
-        return []
-
-    neighbors = []
-    for dc in (-1, 0, 1):
-        for dr in (-1, 0, 1):
-            if dc == 0 and dr == 0:
-                continue
-            nc, nr = col_idx + dc, row_idx + dr
-            if 0 <= nc < max_size and 1 <= nr <= max_size:
-                neighbors.append(f"{chr(ord('A') + nc)}{nr}")
-    return neighbors
 
 
 def _draw_avatar_silhouette(color: tuple[int, int, int, int]) -> Image.Image:
@@ -327,12 +306,19 @@ class ConclusionNotPossibleDialog(BaseModal):
         parent: ctk.CTk,
         cell: CellView,
         attempted_status: Status,
+        action_code: ActionCode,
         message: str | None = None,
         on_cancel: Callable[[], None] | None = None,
     ) -> None:
+        feedback = build_verdict_feedback(
+            action_code,
+            cell,
+            attempted_status,
+            message,
+        )
         super().__init__(
             parent,
-            title="Conclusion Not Possible",
+            title=feedback.title,
             width=440,
             height=380,
             on_cancel=on_cancel,
@@ -342,40 +328,32 @@ class ConclusionNotPossibleDialog(BaseModal):
 
         icon_badge = ctk.CTkLabel(
             self,
-            text="⚠️",
+            text=feedback.icon,
             width=56,
             height=56,
             corner_radius=0,
-            fg_color=theme.WARNING_SOFT,
+            fg_color=(
+                theme.CRIMINAL_SOFT
+                if feedback.tone == "error"
+                else theme.WARNING_SOFT
+            ),
             font=ctk.CTkFont(size=24),
         )
         icon_badge.grid(row=0, column=0, pady=(20, 8))
 
         title_label = ctk.CTkLabel(
             self,
-            text="Conclusion Not Possible",
+            text=feedback.title,
             font=ctk.CTkFont(size=20, weight="bold"),
-            text_color=COLOR_TEXT_MAIN,
+            text_color=(
+                theme.ERROR if feedback.tone == "error" else theme.WARNING
+            ),
         )
         title_label.grid(row=1, column=0, pady=(0, 10))
 
-        if message:
-            main_text = message
-            sub_text = "Unlock more testimony first, or lean on a hint."
-        else:
-            attempted_str = "criminal" if attempted_status == Status.CRIMINAL else "innocent"
-            opposite_str = "innocent" if attempted_status == Status.CRIMINAL else "criminal"
-            name = cell.name or cell.cell_id
-
-            main_text = (
-                f"You can't prove {name} is {attempted_str} from the statements "
-                f"you've unlocked yet — there's still a consistent case where {name} is {opposite_str}."
-            )
-            sub_text = "Unlock more testimony first, or lean on a hint."
-
         desc_label = ctk.CTkLabel(
             self,
-            text=main_text,
+            text=feedback.main,
             font=ctk.CTkFont(size=13),
             text_color=COLOR_TEXT_MAIN,
             justify="center",
@@ -385,7 +363,7 @@ class ConclusionNotPossibleDialog(BaseModal):
 
         advice_label = ctk.CTkLabel(
             self,
-            text=sub_text,
+            text=feedback.advice,
             font=ctk.CTkFont(size=13),
             text_color=COLOR_TEXT_MUTED,
             justify="center",
@@ -395,7 +373,7 @@ class ConclusionNotPossibleDialog(BaseModal):
 
         keep_looking_btn = ctk.CTkButton(
             self,
-            text="Keep looking",
+            text=feedback.button,
             height=44,
             corner_radius=0,
             fg_color=theme.PRIMARY,
@@ -1124,7 +1102,7 @@ class GriductiveApp(ctk.CTk):
             )
 
     def _select_clue(self, cell_id: str) -> None:
-        """KHI CLICK VÀO MANH MỐI: TỰ ĐỘNG HIGHLIGHT CÁC Ô HÀNG XÓM XUNG QUANH MÀU XANH LAM."""
+        """Highlight the exact region referenced by a revealed clue."""
         if self._ignore_clicks:
             return
 
@@ -1139,28 +1117,10 @@ class GriductiveApp(ctk.CTk):
         self.selected_cell_id = cell_id
         self.highlighted_color_map.clear()
 
-        clue = cell.clue_text.lower() if cell.clue_text else ""
-        col_letter = cell_id[0]
-        refs = cell.clue_references or []
-
-        # 1. Nếu Manh mối có từ "neighbor" / "neighbors" -> Highlight TOÀN BỘ 8 ô xung quanh
-        if "neighbor" in clue:
-            neighbors = get_adjacent_neighbors(cell_id, self.game_view.size)
-            for nid in neighbors:
-                self.highlighted_color_map[nid] = COLOR_RELATION  # Sáng Xanh Lam Electric
-
-        # 2. Quét các điều kiện tham chiếu khác (được nhắc tên, cùng cột, v.v.)
-        for other_cell in self.game_view.cells:
-            other_id = other_cell.cell_id
-            if other_id == cell_id:
-                continue
-
-            if "lucy" in clue and other_id == "D3":
-                self.highlighted_color_map[other_id] = COLOR_TARGET_PERSON
-            elif f"column {other_id[0].lower()}" in clue or (f"column {col_letter.lower()}" in clue and other_id.startswith(col_letter)):
-                self.highlighted_color_map[other_id] = COLOR_SCOPE
-            elif other_id in refs:
-                self.highlighted_color_map[other_id] = COLOR_RELATION
+        valid_cell_ids = {item.cell_id for item in self.game_view.cells}
+        for referenced_id in cell.clue_references:
+            if referenced_id in valid_cell_ids:
+                self.highlighted_color_map[referenced_id] = COLOR_RELATION
 
         self._refresh_all()
 
@@ -1178,6 +1138,7 @@ class GriductiveApp(ctk.CTk):
                     self,
                     cell=cell,
                     attempted_status=status,
+                    action_code=result.code,
                     message=getattr(result, "message", None),
                     on_cancel=self._clear_selection,
                 )
@@ -1317,7 +1278,24 @@ class GriductiveApp(ctk.CTk):
             lines.append(f"  ├── Verdict   : {entry.verdict}")
 
         if entry.revealed_clue_id:
-            lines.append(f"  └── KB Update : + {entry.revealed_clue_id}")
+            clue_label = entry.revealed_clue_id
+            if entry.revealed_clue_type:
+                clue_label += f" [{entry.revealed_clue_type}]"
+            has_details = bool(
+                entry.revealed_clue_text or entry.revealed_clue_references
+            )
+            branch = "├──" if has_details else "└──"
+            lines.append(f"  {branch} KB Update : + {clue_label}")
+            if entry.revealed_clue_text:
+                text_branch = (
+                    "│  " if entry.revealed_clue_references else "└──"
+                )
+                lines.append(
+                    f"  {text_branch} Clue      : {entry.revealed_clue_text}"
+                )
+            if entry.revealed_clue_references:
+                references = ", ".join(entry.revealed_clue_references)
+                lines.append(f"  └── References: {references}")
 
         return "\n".join(lines)
 

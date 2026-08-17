@@ -18,12 +18,12 @@ class TestRealGameGateway(unittest.TestCase):
     def test_implements_gui_contract(self) -> None:
         self.assertIsInstance(self.gateway, GameGateway)
 
-    def test_builtin_catalog_lists_eight_levels(self) -> None:
+    def test_builtin_catalog_lists_six_levels(self) -> None:
         options = self.gateway.list_puzzles()
-        self.assertEqual(len(options), 8)
+        self.assertEqual(len(options), 6)
         self.assertEqual(
             [option.size for option in options],
-            [3, 3, 3, 4, 4, 4, 5, 5],
+            [3, 3, 4, 4, 5, 5],
         )
         self.assertTrue(all(option.path.exists() for option in options))
 
@@ -43,31 +43,34 @@ class TestRealGameGateway(unittest.TestCase):
     def test_manual_verdict_uses_entailment(self) -> None:
         before = self.gateway.get_public_state()
 
-        not_provable = self.gateway.submit_verdict("C3", Status.INNOCENT)
+        not_provable = self.gateway.submit_verdict("B1", Status.INNOCENT)
         self.assertEqual(not_provable.code, ActionCode.NOT_PROVABLE)
+        self.assertIn("entails neither", not_provable.message)
         self.assertEqual(self.gateway.get_public_state().solved_count, before.solved_count)
 
-        contradicted = self.gateway.submit_verdict("B1", Status.CRIMINAL)
+        contradicted = self.gateway.submit_verdict("A2", Status.CRIMINAL)
         self.assertEqual(contradicted.code, ActionCode.CONTRADICTED)
+        self.assertIn("entails INNOCENT", contradicted.message)
+        self.assertNotEqual(not_provable.message, contradicted.message)
         self.assertEqual(self.gateway.get_public_state().solved_count, before.solved_count)
 
-        accepted = self.gateway.submit_verdict("B1", Status.INNOCENT)
+        accepted = self.gateway.submit_verdict("A2", Status.INNOCENT)
         self.assertEqual(accepted.code, ActionCode.ACCEPTED)
         after = self.gateway.get_public_state()
         self.assertEqual(after.solved_count, before.solved_count + 1)
-        revealed = next(cell for cell in after.cells if cell.cell_id == "B1")
+        revealed = next(cell for cell in after.cells if cell.cell_id == "A2")
         self.assertTrue(revealed.revealed)
         self.assertIsNotNone(revealed.clue_text)
 
     def test_hint_does_not_reveal_status(self) -> None:
         hint = self.gateway.get_hint()
-        self.assertIn("B1", hint.target_cells)
-        b1 = next(
+        self.assertIn("A2", hint.target_cells)
+        a2 = next(
             cell for cell in self.gateway.get_public_state().cells
-            if cell.cell_id == "B1"
+            if cell.cell_id == "A2"
         )
-        self.assertEqual(b1.status, Status.UNKNOWN)
-        self.assertFalse(b1.revealed)
+        self.assertEqual(a2.status, Status.UNKNOWN)
+        self.assertFalse(a2.revealed)
 
     def test_auto_solve_completes_real_puzzle(self) -> None:
         while self.gateway.get_public_state().phase is GamePhase.ACTIVE:
@@ -78,6 +81,22 @@ class TestRealGameGateway(unittest.TestCase):
         self.assertEqual(state.solved_count, state.total_count)
         self.assertGreater(state.metrics.sat_calls, 0)
         self.assertEqual(len(state.trace), state.step + 1)
+
+    def test_trace_contains_the_complete_newly_revealed_clue(self) -> None:
+        action = self.gateway.auto_solve_step()
+        self.assertIn(action.code, (ActionCode.ACCEPTED, ActionCode.SOLVED))
+        state = self.gateway.get_public_state()
+        entry = state.trace[-1]
+        revealed = next(
+            cell for cell in state.cells if cell.cell_id == action.cell_id
+        )
+        self.assertEqual(entry.revealed_clue_id, revealed.clue_id)
+        self.assertIsNotNone(entry.revealed_clue_type)
+        self.assertEqual(entry.revealed_clue_text, revealed.clue_text)
+        self.assertEqual(
+            entry.revealed_clue_references,
+            revealed.clue_references,
+        )
 
     def test_restart_restores_initial_public_state(self) -> None:
         self.gateway.auto_solve_step()

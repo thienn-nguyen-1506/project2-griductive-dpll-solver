@@ -1,9 +1,7 @@
-Name,Grid,Primary Vars,Aux Vars,Clauses,SAT Calls,Decisions,Propagations,Backtracks,Deduction Steps,Forced,Unknown,Consistent,Unique,Runtime (ms)
-Festival Case,3x3,9,0,13,19,0,135,0,9,9,0,True,True,0.719
-Coffee Case,3x3,9,0,18,18,0,126,0,9,9,0,True,True,0.590
-School Case,3x3,9,0,18,18,26,140,15,9,9,0,True,True,0.723
-Bakery Case,4x4,16,0,29,28,22,316,11,16,15,1,True,False,1.491
-Storm Case,4x4,16,0,29,24,0,258,0,16,15,1,True,False,0.955
-Cat Case,4x4,16,0,29,26,27,281,9,16,15,1,True,False,1.084
-Grand Case,5x5,25,0,54,43,1,740,0,25,23,2,True,False,6.723
-Midnight Case,5x5,25,0,59,42,0,735,0,25,24,1,True,False,4.574
+Puzzle File,Name,Grid,Status,Runs,Completed Runs,Primary Vars,Aux Vars,Initial Clauses,Full Clauses,SAT Calls,Decisions,Propagations,Backtracks,Deduction Steps,Forced,Unknown,Consistent,Unique,Mean Runtime (ms),Error
+level_01_3x3.json,Festival Case,3x3,OK,10,10,9,0,8,24,57,11,369,0,7,7,0,True,True,1.792,
+level_02_3x3.json,Coffee Case,3x3,OK,10,10,9,0,7,27,56,10,361,0,7,7,0,True,True,1.571,
+level_04_4x4.json,Bakery Case,4x4,OK,10,10,16,0,9,170,185,173,1938,0,13,13,0,True,True,12.254,
+level_05_4x4.json,Storm Case,4x4,OK,10,10,16,0,14,67,184,169,1937,0,13,13,0,True,True,12.905,
+level_07_5x5.json,Grand Case,5x5,OK,10,10,25,0,26,159,466,861,7144,0,21,21,0,True,True,73.608,
+level_08_5x5.json,Midnight Case,5x5,OK,10,10,25,0,20,145,465,864,7085,0,21,21,0,True,True,82.947,

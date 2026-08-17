@@ -3,7 +3,7 @@
   "id": "level_01_3x3",
   "name": "Festival Case",
   "size": 3,
-  "source": "Screenshot board: Anya to Kira (top-left 3x3).",
+  "source": "Redesigned non-linear logic puzzle based on the original screenshot characters.",
   "initial_revealed": [
     "A1",
     "B2"
@@ -20,43 +20,42 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_01_3X3-A1",
-        "type": "FACT",
+        "type": "DIFFERENT",
         "target_cells": [
-          "B1"
+          "C3",
+          "A2"
         ],
-        "value": "INNOCENT",
-        "text": "Bella is Innocent."
+        "text": "Kira and Eliza have different statuses."
       }
     },
     {
       "id": "B1",
       "name": "Bella",
       "profession": "Guard",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_01_3X3-B1",
         "type": "SAME",
         "target_cells": [
-          "B1",
-          "C1"
+          "C1",
+          "B3"
         ],
-        "text": "Bella and Cara have the same statuses."
+        "text": "Cara and Jonas have the same status."
       }
     },
     {
       "id": "C1",
       "name": "Cara",
       "profession": "Builder",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_01_3X3-C1",
-        "type": "EXACTLY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C1",
-          "A2"
+          "A1",
+          "B2"
         ],
-        "value": 0,
-        "text": "Exactly 0 of Cara and Eliza are Criminals."
+        "text": "Anya and Franz have different statuses."
       }
     },
     {
@@ -66,13 +65,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_01_3X3-A2",
-        "type": "AT_MOST",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C2",
-          "B2"
+          "B1",
+          "A3"
         ],
-        "value": 1,
-        "text": "At most 1 of Gwen and Franz is a Criminal."
+        "text": "Bella and Ike have different statuses."
       }
     },
     {
@@ -82,12 +80,14 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_01_3X3-B2",
-        "type": "FACT",
+        "type": "PARITY",
         "target_cells": [
-          "A1"
+          "A2",
+          "A1",
+          "B2"
         ],
-        "value": "INNOCENT",
-        "text": "Anya is Innocent."
+        "value": "ODD",
+        "text": "An odd number of Eliza, Anya, Franz are Criminals."
       }
     },
     {
@@ -97,13 +97,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_01_3X3-C2",
-        "type": "PARITY",
+        "type": "FACT",
         "target_cells": [
-          "C2",
-          "A3"
+          "A1"
         ],
-        "value": "EVEN",
-        "text": "There is an even number of Criminals among Gwen and Ike."
+        "value": "INNOCENT",
+        "text": "Anya is Innocent."
       }
     },
     {
@@ -115,14 +114,13 @@
         "id": "LEVEL_01_3X3-A3",
         "type": "COUNT_COMPARE",
         "left_cells": [
-          "B3",
-          "A1"
+          "C1"
         ],
         "right_cells": [
-          "A1"
+          "B2"
         ],
-        "operator": "GT",
-        "text": "There are more Criminals among Jonas and Anya than around Anya alone."
+        "operator": "EQ",
+        "text": "The region containing Cara has the same Criminal count as the region containing Franz."
       }
     },
     {
@@ -132,27 +130,31 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_01_3X3-B3",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
-          "C3"
+          "C2",
+          "A1",
+          "B2"
         ],
-        "value": "INNOCENT",
-        "text": "Kira is Innocent."
+        "value": 1,
+        "text": "Exactly 1 of Gwen, Anya, Franz are Criminals."
       }
     },
     {
       "id": "C3",
       "name": "Kira",
       "profession": "Cook",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_01_3X3-C3",
-        "type": "FACT",
+        "type": "AT_LEAST",
         "target_cells": [
+          "B1",
+          "A1",
           "B2"
         ],
-        "value": "CRIMINAL",
-        "text": "Franz is a Criminal."
+        "value": 2,
+        "text": "At least 2 of Bella, Anya, Franz are Criminals."
       }
     }
   ]

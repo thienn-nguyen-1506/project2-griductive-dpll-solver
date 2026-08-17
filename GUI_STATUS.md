@@ -15,6 +15,9 @@ qua `gui/real_gateway.py`.
 - Trình duyệt các clue đã mở.
 - Hint, chạy một deduction step, Auto Solve từng bước và nút Stop.
 - Progress, trạng thái ván chơi, solver metrics và deduction trace có cấu trúc.
+- Trace ghi ID, loại, nội dung và các ô tham chiếu của clue vừa được mở.
+- Popup phân biệt rõ `NOT_PROVABLE` (chưa đủ dữ kiện) và
+  `CONTRADICTED` (KB đã chứng minh trạng thái ngược lại).
 - Choose Level, Import Puzzle, Restart, Light/Dark theme và phím tắt.
 - Real Gateway có thể tải và giải các puzzle chính thức bằng KB công khai.
 
@@ -34,6 +37,7 @@ source .venv/bin/activate
 python main.py
 ```
 
-Trong GUI, chọn **Choose Level** để mở một trong tám màn tích hợp sẵn. Chọn
-**Import Puzzle** khi cần nạp một file `level_*.json` bên ngoài. Các file
-`gui_demo_*.json` là dữ liệu Mock cũ và không được Real Gateway chấp nhận.
+Trong GUI, chọn **Choose Level** để mở một trong sáu màn tích hợp sẵn. Chọn
+**Import Puzzle** khi cần nạp một file puzzle JSON bên ngoài. File được
+kiểm tra trước khi thay thế màn hiện tại, nên file không hợp lệ sẽ không
+làm thay đổi trạng thái game.

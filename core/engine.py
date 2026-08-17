@@ -33,6 +33,9 @@ class EngineTraceEntry:
     sat_queries: Tuple[str, ...] = ()
     verdict: Optional[str] = None
     revealed_clue_id: Optional[str] = None
+    revealed_clue_type: Optional[str] = None
+    revealed_clue_text: Optional[str] = None
+    revealed_clue_references: Tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -69,7 +72,10 @@ class GameEngine:
         self._clue_owner = {
             cell.clue.id: cell.cell_id for cell in puzzle.cells
         }
-        self._encoder = CNFEncoder(character_ids=list(puzzle.cell_ids))
+        self._encoder = CNFEncoder(
+            character_ids=list(puzzle.cell_ids),
+            grid_size=puzzle.size,
+        )
         self._agent = agent or DeductiveAgent()
         self.restart()
 
@@ -196,6 +202,9 @@ class GameEngine:
                 sat_queries=self._format_sat_queries(trace_step),
                 verdict=f"{cell_id} = {status}",
                 revealed_clue_id=clue.id,
+                revealed_clue_type=clue.type,
+                revealed_clue_text=clue.text,
+                revealed_clue_references=self.clue_references(clue),
             )
         )
 
@@ -240,13 +249,14 @@ class GameEngine:
         if forced_status == "UNKNOWN":
             return EngineAction(
                 "NOT_PROVABLE",
-                f"{cell_id}: neither status is forced by the current KB.",
+                f"{cell_id}: the current KB entails neither CRIMINAL nor INNOCENT.",
                 cell_id,
             )
         if forced_status != claimed_status:
             return EngineAction(
                 "CONTRADICTED",
-                f"{cell_id}: the opposite status is logically forced.",
+                f"{cell_id}: the KB entails {forced_status}, so "
+                f"{claimed_status} is contradicted.",
                 cell_id,
             )
         return self._accept_forced(cell_id, forced_status, result)

@@ -3,7 +3,7 @@
   "id": "level_05_4x4",
   "name": "Storm Case",
   "size": 4,
-  "source": "Screenshot board: Anya to Pete (first four rows).",
+  "source": "Redesigned non-linear logic puzzle based on the original screenshot characters.",
   "initial_revealed": [
     "A1",
     "B1",
@@ -21,12 +21,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-A1",
-        "type": "FACT",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C1"
+          "D4",
+          "A2"
         ],
-        "value": "CRIMINAL",
-        "text": "Clara is a Criminal."
+        "text": "Pete and Emma have different statuses."
       }
     },
     {
@@ -36,12 +36,15 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-B1",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
-          "A1"
+          "A2",
+          "A1",
+          "B1",
+          "D1"
         ],
-        "value": "INNOCENT",
-        "text": "Anya is Innocent."
+        "value": 1,
+        "text": "Exactly 1 of Emma, Anya, Brian, Dana are Criminals."
       }
     },
     {
@@ -51,12 +54,12 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-C1",
-        "type": "SAME",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C1",
-          "A2"
+          "B2",
+          "C3"
         ],
-        "text": "Clara and Emma have the same statuses."
+        "text": "Finn and Kobe have different statuses."
       }
     },
     {
@@ -66,28 +69,27 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-D1",
-        "type": "FACT",
+        "type": "DIFFERENT",
         "target_cells": [
-          "B1"
+          "C1",
+          "B4"
         ],
-        "value": "CRIMINAL",
-        "text": "Brian is a Criminal."
+        "text": "Clara and Noah have different statuses."
       }
     },
     {
       "id": "A2",
       "name": "Emma",
       "profession": "Detective",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-A2",
-        "type": "EXACTLY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "A2",
-          "B2"
+          "D2",
+          "A4"
         ],
-        "value": 1,
-        "text": "Exactly 1 of Emma and Finn is a Criminal."
+        "text": "Hank and Milo have different statuses."
       }
     },
     {
@@ -97,13 +99,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-B2",
-        "type": "AT_LEAST",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C2",
-          "A1"
+          "B3",
+          "C4"
         ],
-        "value": 1,
-        "text": "At least 1 of Gwen and Anya is a Criminal."
+        "text": "Jonas and Opal have different statuses."
       }
     },
     {
@@ -113,32 +114,31 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-C2",
-        "type": "PARITY",
-        "target_cells": [
-          "C2",
-          "D2"
-        ],
-        "value": "EVEN",
-        "text": "There is an even number of Criminals among Gwen and Hank."
+        "type": "EXACTLY",
+        "region": {
+          "kind": "EXPLICIT",
+          "cells": [
+            "A1",
+            "B1"
+          ]
+        },
+        "value": 1,
+        "text": "Exactly 1 of Anya and Brian is a Criminal."
       }
     },
     {
       "id": "D2",
       "name": "Hank",
       "profession": "Student",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-D2",
-        "type": "COUNT_COMPARE",
-        "left_cells": [
-          "B1"
-        ],
-        "right_cells": [
+        "type": "DIFFERENT",
+        "target_cells": [
           "A3",
-          "A1"
+          "D3"
         ],
-        "operator": "GT",
-        "text": "Brian's group has more Criminals than the group of Ivy and Anya."
+        "text": "Ivy and Leo have different statuses."
       }
     },
     {
@@ -148,12 +148,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-A3",
-        "type": "FACT",
+        "type": "DIFFERENT",
         "target_cells": [
-          "B3"
+          "A1",
+          "B1"
         ],
-        "value": "CRIMINAL",
-        "text": "Jonas is a Criminal."
+        "text": "Anya and Brian have different statuses."
       }
     },
     {
@@ -163,12 +163,12 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-B3",
-        "type": "SAME",
+        "type": "DIFFERENT",
         "target_cells": [
-          "B3",
-          "C3"
+          "A1",
+          "B1"
         ],
-        "text": "Jonas and Kobe have the same statuses."
+        "text": "Anya and Brian have different statuses."
       }
     },
     {
@@ -180,11 +180,13 @@
         "id": "LEVEL_05_4X4-C3",
         "type": "EXACTLY",
         "target_cells": [
-          "C3",
-          "D3"
+          "A3",
+          "A1",
+          "B1",
+          "D1"
         ],
-        "value": 2,
-        "text": "Exactly 2 of Kobe and Leo are Criminals."
+        "value": 1,
+        "text": "Exactly 1 of Ivy, Anya, Brian, Dana are Criminals."
       }
     },
     {
@@ -194,63 +196,69 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-D3",
-        "type": "AT_MOST",
+        "type": "PARITY",
         "target_cells": [
-          "A4",
-          "B1"
+          "B3",
+          "A1",
+          "B1",
+          "D1"
         ],
-        "value": 1,
-        "text": "At most 1 of Milo and Brian is a Criminal."
+        "value": "EVEN",
+        "text": "An even number of Jonas, Anya, Brian, Dana are Criminals."
       }
     },
     {
       "id": "A4",
       "name": "Milo",
       "profession": "Astronaut",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-A4",
-        "type": "PARITY",
-        "target_cells": [
-          "A4",
-          "B4"
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "B2"
         ],
-        "value": "ODD",
-        "text": "There is an odd number of Criminals among Milo and Noah."
+        "right_cells": [
+          "A1"
+        ],
+        "operator": "EQ",
+        "text": "The region containing Finn has the same Criminal count as the region containing Anya."
       }
     },
     {
       "id": "B4",
       "name": "Noah",
       "profession": "Singer",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-B4",
-        "type": "COUNT_COMPARE",
-        "left_cells": [
-          "C4",
-          "A1"
+        "type": "AT_MOST",
+        "target_cells": [
+          "D2",
+          "A1",
+          "B1",
+          "D1"
         ],
-        "right_cells": [
-          "A1"
-        ],
-        "operator": "GT",
-        "text": "There are more Criminals among Opal and Anya than around Anya alone."
+        "value": 1,
+        "text": "At most 1 of Hank, Anya, Brian, Dana are Criminals."
       }
     },
     {
       "id": "C4",
       "name": "Opal",
       "profession": "Singer",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_05_4X4-C4",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
-          "D4"
+          "C2",
+          "A1",
+          "B1",
+          "D1"
         ],
-        "value": "CRIMINAL",
-        "text": "Pete is a Criminal."
+        "value": 2,
+        "text": "Exactly 2 of Gwen, Anya, Brian, Dana are Criminals."
       }
     },
     {
@@ -260,12 +268,15 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_05_4X4-D4",
-        "type": "FACT",
+        "type": "PARITY",
         "target_cells": [
-          "B1"
+          "C1",
+          "A1",
+          "B1",
+          "D1"
         ],
-        "value": "CRIMINAL",
-        "text": "Brian is a Criminal."
+        "value": "EVEN",
+        "text": "An even number of Clara, Anya, Brian, Dana are Criminals."
       }
     }
   ]

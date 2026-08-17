@@ -223,7 +223,7 @@ class MockGameGateway:
             self._simulate_solver_call()
             return ActionResult(
                 ActionCode.NOT_PROVABLE,
-                f"{cell_id}: neither status is forced by the current KB.",
+                f"{cell_id}: the current KB entails neither CRIMINAL nor INNOCENT.",
                 cell_id,
             )
 
@@ -232,7 +232,8 @@ class MockGameGateway:
             self._simulate_solver_call(contradicted=True)
             return ActionResult(
                 ActionCode.CONTRADICTED,
-                f"{cell_id}: the opposite status is logically forced.",
+                f"{cell_id}: the KB entails {forced_status.value}, so "
+                f"{status.value} is contradicted.",
                 cell_id,
             )
 
@@ -258,6 +259,9 @@ class MockGameGateway:
                 sat_queries=(f"SAT(KB and {cell_id})", f"SAT(KB and not {cell_id})"),
                 verdict=f"{cell_id} = {forced_status.value}",
                 revealed_clue_id=clue_id,
+                revealed_clue_type="MOCK",
+                revealed_clue_text=clue,
+                revealed_clue_references=references,
             )
         )
 

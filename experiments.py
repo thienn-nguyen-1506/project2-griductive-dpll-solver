@@ -1,14 +1,15 @@
-"""Benchmark experiments for DPLL SAT Solver and Deductive Agent.
+"""Reproducible experiments for the complete Griductive deduction loop.
 
-This script:
-* Loads real puzzle JSON files from `puzzles/` and encodes them via `CNFEncoder`.
-* Falls back to synthetic benchmarks if JSON files are missing or lack clues.
-* Runs DeductiveAgent evaluation (SAT calls, propagations, backtracks, runtime).
-* Exports results to CSV and Markdown for the report.
+Each official puzzle is loaded through the production puzzle loader and then
+solved from its initial public knowledge base by repeatedly calling
+``GameEngine.auto_solve_step``.  The benchmark therefore measures the same
+progressive reveal protocol used by the GUI; it never activates every clue at
+the start.
 
 Usage
 -----
     python experiments.py
+    python experiments.py --runs 10 --timeout 5
 
 Output
 ------
@@ -18,44 +19,40 @@ Output
 
 from __future__ import annotations
 
+import argparse
 import csv
-import json
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
-
-# Ensure project root is on sys.path so core package is importable.
-_PROJECT_ROOT = Path(__file__).resolve().parent
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
-
-from core.agent import (  # noqa: E402
-    DeductiveAgent,
-    KnowledgeBaseSnapshot,
-)
-from core.encoder import CNFEncoder, Clue  # noqa: E402
-
-try:
-    from core.puzzle import load_puzzle  # noqa: E402
-except ImportError:
-    load_puzzle = None
+from statistics import mean
+from typing import Iterable, Optional
 
 
-# ---------------------------------------------------------------------------
-# Result data class
-# ---------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from core.agent import AgentMetrics, DeductiveAgent  # noqa: E402
+from core.encoder import CNFEncoder  # noqa: E402
+from core.engine import GameEngine  # noqa: E402
+from core.puzzle import PuzzleDefinition, load_puzzle  # noqa: E402
+
 
 @dataclass
 class BenchmarkResult:
-    """One row in the experiment results table."""
+    """One report row, including unsuccessful and timed-out runs."""
 
+    puzzle_file: str
     name: str
-    grid_size: str                      # e.g. "3x3"
+    grid_size: str = "-"
+    status: str = "FAILED"
+    runs_requested: int = 0
+    runs_completed: int = 0
     num_primary_vars: int = 0
     num_aux_vars: int = 0
-    num_clauses: int = 0
+    initial_clauses: int = 0
+    full_clauses: int = 0
     sat_calls: int = 0
     decisions: int = 0
     propagations: int = 0
@@ -63,358 +60,365 @@ class BenchmarkResult:
     deduction_steps: int = 0
     forced_count: int = 0
     unknown_count: int = 0
-    is_consistent: bool = True
-    is_unique: bool = True
-    total_runtime_ms: float = 0.0
+    is_consistent: Optional[bool] = None
+    is_unique: Optional[bool] = None
+    mean_runtime_ms: float = 0.0
+    error: str = ""
 
 
-# ---------------------------------------------------------------------------
-# JSON Loader via CNFEncoder / load_puzzle
-# ---------------------------------------------------------------------------
-
-def _load_puzzle_from_json(json_path: Path) -> Tuple[str, KnowledgeBaseSnapshot, str]:
-    """Load a puzzle JSON file and encode it into CNF using CNFEncoder."""
-    # 1. Thử dùng module loader chính thức nếu khả dụng
-    if load_puzzle is not None:
-        try:
-            puzzle = load_puzzle(json_path)
-            encoder = CNFEncoder(character_ids=list(puzzle.cell_ids))
-            snapshot = encoder.build_snapshot(
-                all_cell_ids=list(puzzle.cell_ids),
-                clues=list(puzzle.clues),
-                active_clue_ids=[c.id for c in puzzle.clues],
-                known_statuses={},
-            )
-            name = puzzle.name if puzzle.name else f"Puzzle {json_path.stem}"
-            grid_size = f"{puzzle.size}x{puzzle.size}"
-            return name, snapshot, grid_size
-        except Exception:
-            pass  # Fallback sang tự giải mã thủ công bên dưới nếu có lỗi schema
-
-    # 2. Xử lý nạp JSON thủ công linh hoạt
-    with open(json_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    # Lấy kích thước lưới
-    grid_data = data.get("grid", {})
-    if isinstance(grid_data, dict) and ("rows" in grid_data or "cols" in grid_data):
-        rows = grid_data.get("rows", 3)
-        cols = grid_data.get("cols", 3)
-    else:
-        size = data.get("size", 3)
-        rows = cols = size
-    grid_size = f"{rows}x{cols}"
-
-    # Lấy danh sách ô (cell_ids)
-    cells_list = data.get("cells", [])
-    if isinstance(grid_data, dict) and "cells" in grid_data:
-        cells_list = grid_data["cells"]
-
-    if cells_list:
-        cell_ids = [c["id"] for c in cells_list if isinstance(c, dict) and "id" in c]
-    else:
-        cell_ids = [f"{chr(65 + c)}{r + 1}" for r in range(rows) for c in range(cols)]
-
-    # Lấy danh sách manh mối (hỗ trợ cả root clues, grid clues và clue bên trong từng ô cell)
-    raw_clues = (
-        data.get("clues")
-        or data.get("initial_clues")
-        or (grid_data.get("clues") if isinstance(grid_data, dict) else [])
-        or []
-    )
-
-    if not raw_clues and cells_list:
-        for cell in cells_list:
-            if isinstance(cell, dict) and cell.get("clue"):
-                raw_clues.append(cell["clue"])
-
-    if not raw_clues:
-        raise ValueError(f"File '{json_path.name}' không chứa clues hợp lệ.")
-
-    clues: List[Clue] = []
-    for idx, c in enumerate(raw_clues):
-        if not isinstance(c, dict):
-            continue
-
-        target_cells = c.get("target_cells") or c.get("targets") or []
-        if not target_cells and c.get("target"):
-            target_cells = [c["target"]]
-
-        val = c.get("value") if c.get("value") is not None else c.get("count")
-
-        clues.append(
-            Clue(
-                id=c.get("id", f"clue_{idx}"),
-                type=c.get("type", ""),
-                target_cells=target_cells,
-                value=val,
-                target_status=c.get("target_status", "CRIMINAL"),
-                text=c.get("text", ""),
-                left_cells=c.get("left_cells", []),
-                right_cells=c.get("right_cells", []),
-                operator=c.get("operator", ""),
-            )
-        )
-
-    encoder = CNFEncoder(character_ids=cell_ids)
-    snapshot = encoder.build_snapshot(
-        all_cell_ids=cell_ids,
-        clues=clues,
-        active_clue_ids=[c.id for c in clues],
-        known_statuses={},
-    )
-
-    name = data.get("name") or f"Puzzle {json_path.stem}"
-    return name, snapshot, grid_size
-
-
-# ---------------------------------------------------------------------------
-# Fallback Synthetic Generators
-# ---------------------------------------------------------------------------
-
-def _generate_3x3_synthetic() -> Tuple[str, KnowledgeBaseSnapshot, str]:
-    cell_ids = ["A1", "B1", "C1", "A2", "B2", "C2", "A3", "B3", "C3"]
-    cell_to_var = {cid: i + 1 for i, cid in enumerate(cell_ids)}
-
-    clauses = [
-        [1], [-2], [-3], [-5, 9], [5, -9],
-        [-4, -5], [4, 5], [2, 5, 8], [-7, -8],
-        [-7, -9], [-8, -9], [-6]
+def _build_measurement_snapshots(puzzle: PuzzleDefinition):
+    """Build the initial and complete public-KB snapshots for clause counts."""
+    all_ids = list(puzzle.cell_ids)
+    all_clues = list(puzzle.clues)
+    initial_known = {
+        cell_id: puzzle.hidden_solution[cell_id]
+        for cell_id in puzzle.initial_revealed
+    }
+    initial_clue_ids = [
+        puzzle.cell_map[cell_id].clue.id
+        for cell_id in puzzle.initial_revealed
     ]
-
-    snap = KnowledgeBaseSnapshot(
-        clauses=clauses,
-        primary_vars={f"C_{cid}": var for cid, var in cell_to_var.items()},
-        unresolved_cell_ids=list(cell_ids),
-        cell_to_var=cell_to_var,
-        active_clue_ids=["clue1", "clue2", "clue3"],
-        known_statuses={},
-        aux_var_count=0,
+    encoder = CNFEncoder(character_ids=all_ids, grid_size=puzzle.size)
+    initial_snapshot = encoder.build_snapshot(
+        all_cell_ids=all_ids,
+        clues=all_clues,
+        active_clue_ids=initial_clue_ids,
+        known_statuses=initial_known,
     )
-    return "Synthetic 3x3", snap, "3x3"
-
-
-def _generate_4x4_synthetic() -> Tuple[str, KnowledgeBaseSnapshot, str]:
-    cell_ids = [f"{c}{r}" for r in range(1, 5) for c in "ABCD"]
-    cell_to_var = {cid: i + 1 for i, cid in enumerate(cell_ids)}
-
-    clauses = [
-        [1], [-2], [4], [-5], [6], [-7], [-8], [-9], [-10],
-        [11], [-12], [13], [-14], [-15], [16], [-3], [-13, 16],
-        [13, -16], [-2, -6], [2, 6], [3, 7, 11, 15]
-    ]
-
-    snap = KnowledgeBaseSnapshot(
-        clauses=clauses,
-        primary_vars={f"C_{cid}": var for cid, var in cell_to_var.items()},
-        unresolved_cell_ids=list(cell_ids),
-        cell_to_var=cell_to_var,
-        active_clue_ids=["clue1", "clue2"],
-        known_statuses={},
-        aux_var_count=0,
+    full_snapshot = encoder.build_snapshot(
+        all_cell_ids=all_ids,
+        clues=all_clues,
+        active_clue_ids=[clue.id for clue in all_clues],
+        known_statuses=initial_known,
     )
-    return "Synthetic 4x4", snap, "4x4"
+    return initial_snapshot, full_snapshot
 
 
-def _generate_5x5_synthetic() -> Tuple[str, KnowledgeBaseSnapshot, str]:
-    cell_ids = [f"{c}{r}" for r in range(1, 6) for c in "ABCDE"]
-    cell_to_var = {cid: i + 1 for i, cid in enumerate(cell_ids)}
-
-    criminal_set = {1, 4, 7, 10, 13, 16, 19, 22, 25, 8}
-    innocent_set = set(range(1, 26)) - criminal_set
-
-    clauses = []
-    for v in sorted(criminal_set):
-        clauses.append([v])
-    for v in sorted(innocent_set):
-        clauses.append([-v])
-
-    snap = KnowledgeBaseSnapshot(
-        clauses=clauses,
-        primary_vars={f"C_{cid}": var for cid, var in cell_to_var.items()},
-        unresolved_cell_ids=list(cell_ids),
-        cell_to_var=cell_to_var,
-        active_clue_ids=["clue1"],
-        known_statuses={},
-        aux_var_count=0,
+def _base_result(
+    puzzle: PuzzleDefinition,
+    puzzle_file: str,
+    runs: int,
+) -> BenchmarkResult:
+    initial_snapshot, full_snapshot = _build_measurement_snapshots(puzzle)
+    result = BenchmarkResult(
+        puzzle_file=puzzle_file,
+        name=puzzle.name,
+        grid_size=f"{puzzle.size}x{puzzle.size}",
+        runs_requested=runs,
+        num_primary_vars=len(full_snapshot.cell_to_var),
+        num_aux_vars=full_snapshot.aux_var_count,
+        initial_clauses=initial_snapshot.clause_count,
+        full_clauses=full_snapshot.clause_count,
     )
-    return "Synthetic 5x5", snap, "5x5"
 
+    # Uniqueness is a property of the complete clue set plus the initially
+    # public statuses.  Its SAT calls are intentionally not mixed into the
+    # progressive deduction metrics below.
+    agent = DeductiveAgent()
+    consistency_metrics = AgentMetrics()
+    result.is_consistent = agent.check_consistency(
+        full_snapshot, consistency_metrics
+    )
+    if result.is_consistent:
+        result.is_unique, _ = agent.check_uniqueness(full_snapshot)
+    else:
+        result.is_unique = False
+    return result
 
-# ---------------------------------------------------------------------------
-# Benchmark runner
-# ---------------------------------------------------------------------------
 
 def run_benchmark(
-    name: str,
-    snapshot: KnowledgeBaseSnapshot,
-    grid_size: str,
+    puzzle: PuzzleDefinition,
+    *,
+    puzzle_file: str = "",
+    runs: int = 10,
+    timeout_seconds: float = 5.0,
 ) -> BenchmarkResult:
-    """Run a full benchmark on a single puzzle snapshot."""
-    agent = DeductiveAgent()
+    """Run the production deduction loop repeatedly for one puzzle.
 
-    # 1. Classify all
-    t0 = time.perf_counter()
-    result = agent.classify_all(snapshot)
-    classify_time = (time.perf_counter() - t0) * 1000
+    ``timeout_seconds`` applies to each repetition.  The DPLL implementation
+    is synchronous, so the deadline is checked before and after every complete
+    deduction step.
+    """
+    if isinstance(runs, bool) or not isinstance(runs, int) or runs <= 0:
+        raise ValueError("runs must be a positive integer.")
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive.")
 
-    # 2. Uniqueness check
-    t1 = time.perf_counter()
-    is_unique, uniq_metrics = agent.check_uniqueness(snapshot)
-    uniq_time = (time.perf_counter() - t1) * 1000
+    result = _base_result(puzzle, puzzle_file, runs)
+    runtimes: list[float] = []
+    reference_metrics: Optional[tuple[int, int, int, int, int]] = None
 
-    forced = sum(1 for v in result.classifications.values() if v != "UNKNOWN")
-    unknown = sum(1 for v in result.classifications.values() if v == "UNKNOWN")
+    for run_index in range(1, runs + 1):
+        engine = GameEngine(puzzle)
+        run_started = time.perf_counter()
 
-    total_sat_calls = result.metrics.sat_calls + uniq_metrics.sat_calls
-    total_decisions = result.metrics.total_decisions + uniq_metrics.total_decisions
-    total_propagations = result.metrics.total_propagations + uniq_metrics.total_propagations
-    total_backtracks = result.metrics.total_backtracks + uniq_metrics.total_backtracks
+        try:
+            while engine.phase == "ACTIVE":
+                elapsed = time.perf_counter() - run_started
+                if elapsed >= timeout_seconds:
+                    result.status = "TIMEOUT"
+                    result.error = (
+                        f"Run {run_index} exceeded {timeout_seconds:.3f}s "
+                        "before the next deduction step."
+                    )
+                    return result
 
-    return BenchmarkResult(
-        name=name,
-        grid_size=grid_size,
-        num_primary_vars=len(snapshot.cell_to_var),
-        num_aux_vars=snapshot.aux_var_count,
-        num_clauses=snapshot.clause_count,
-        sat_calls=total_sat_calls,
-        decisions=total_decisions,
-        propagations=total_propagations,
-        backtracks=total_backtracks,
-        deduction_steps=len(result.trace),
-        forced_count=forced,
-        unknown_count=unknown,
-        is_consistent=result.is_consistent,
-        is_unique=is_unique,
-        total_runtime_ms=classify_time + uniq_time,
-    )
+                action = engine.auto_solve_step()
+
+                elapsed = time.perf_counter() - run_started
+                if elapsed >= timeout_seconds:
+                    result.status = "TIMEOUT"
+                    result.error = (
+                        f"Run {run_index} exceeded {timeout_seconds:.3f}s "
+                        "after a deduction step."
+                    )
+                    return result
+                if action.code not in {"ACCEPTED", "SOLVED"}:
+                    break
+        except Exception as error:  # Preserve the failed row in the report.
+            result.status = "FAILED"
+            result.error = f"Run {run_index}: {type(error).__name__}: {error}"
+            return result
+
+        metrics = engine.metrics
+        current_metrics = (
+            metrics.sat_calls,
+            metrics.total_decisions,
+            metrics.total_propagations,
+            metrics.total_backtracks,
+            engine.step,
+        )
+        if engine.phase != "SOLVED":
+            result.status = engine.phase
+            result.sat_calls = metrics.sat_calls
+            result.decisions = metrics.total_decisions
+            result.propagations = metrics.total_propagations
+            result.backtracks = metrics.total_backtracks
+            result.deduction_steps = engine.step
+            result.forced_count = engine.step
+            result.unknown_count = (
+                len(puzzle.cells)
+                - len(puzzle.initial_revealed)
+                - engine.step
+            )
+            result.error = (
+                f"Run {run_index} ended in phase {engine.phase}; "
+                "the public KB could not complete the puzzle."
+            )
+            return result
+
+        if reference_metrics is None:
+            reference_metrics = current_metrics
+        elif current_metrics != reference_metrics:
+            result.status = "FAILED"
+            result.error = (
+                "Deterministic metrics changed between repeated runs: "
+                f"expected {reference_metrics}, got {current_metrics}."
+            )
+            return result
+
+        result.runs_completed += 1
+        runtimes.append(metrics.total_runtime_ms)
+
+    assert reference_metrics is not None
+    (
+        result.sat_calls,
+        result.decisions,
+        result.propagations,
+        result.backtracks,
+        result.deduction_steps,
+    ) = reference_metrics
+    result.forced_count = result.deduction_steps
+    result.unknown_count = 0
+    result.mean_runtime_ms = mean(runtimes)
+    result.status = "OK"
+    return result
 
 
-# ---------------------------------------------------------------------------
-# Export functions
-# ---------------------------------------------------------------------------
+def benchmark_file(
+    path: Path,
+    *,
+    runs: int = 10,
+    timeout_seconds: float = 5.0,
+) -> BenchmarkResult:
+    """Load and benchmark one file without dropping load failures."""
+    try:
+        puzzle = load_puzzle(path)
+        return run_benchmark(
+            puzzle,
+            puzzle_file=path.name,
+            runs=runs,
+            timeout_seconds=timeout_seconds,
+        )
+    except Exception as error:
+        return BenchmarkResult(
+            puzzle_file=path.name,
+            name=path.stem,
+            status="FAILED",
+            runs_requested=runs,
+            error=f"{type(error).__name__}: {error}",
+        )
 
-_CSV_HEADERS = [
-    "Name", "Grid", "Primary Vars", "Aux Vars", "Clauses",
-    "SAT Calls", "Decisions", "Propagations", "Backtracks",
-    "Deduction Steps", "Forced", "Unknown",
-    "Consistent", "Unique", "Runtime (ms)",
+
+CSV_HEADERS = [
+    "Puzzle File",
+    "Name",
+    "Grid",
+    "Status",
+    "Runs",
+    "Completed Runs",
+    "Primary Vars",
+    "Aux Vars",
+    "Initial Clauses",
+    "Full Clauses",
+    "SAT Calls",
+    "Decisions",
+    "Propagations",
+    "Backtracks",
+    "Deduction Steps",
+    "Forced",
+    "Unknown",
+    "Consistent",
+    "Unique",
+    "Mean Runtime (ms)",
+    "Error",
 ]
 
 
-def _result_to_row(r: BenchmarkResult) -> List:
+def _display_optional(value: Optional[bool]) -> str:
+    return "N/A" if value is None else str(value)
+
+
+def result_to_row(result: BenchmarkResult) -> list[object]:
     return [
-        r.name, r.grid_size, r.num_primary_vars, r.num_aux_vars,
-        r.num_clauses, r.sat_calls, r.decisions, r.propagations,
-        r.backtracks, r.deduction_steps, r.forced_count, r.unknown_count,
-        r.is_consistent, r.is_unique, f"{r.total_runtime_ms:.3f}",
+        result.puzzle_file,
+        result.name,
+        result.grid_size,
+        result.status,
+        result.runs_requested,
+        result.runs_completed,
+        result.num_primary_vars,
+        result.num_aux_vars,
+        result.initial_clauses,
+        result.full_clauses,
+        result.sat_calls,
+        result.decisions,
+        result.propagations,
+        result.backtracks,
+        result.deduction_steps,
+        result.forced_count,
+        result.unknown_count,
+        _display_optional(result.is_consistent),
+        _display_optional(result.is_unique),
+        f"{result.mean_runtime_ms:.3f}",
+        result.error,
     ]
 
 
-def export_csv(results: List[BenchmarkResult], path: Path) -> None:
-    """Write results to a CSV file."""
+def export_csv(results: Iterable[BenchmarkResult], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(_CSV_HEADERS)
-        for r in results:
-            writer.writerow(_result_to_row(r))
-    print(f"  -> CSV saved to {path.relative_to(_PROJECT_ROOT)}")
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        writer.writerow(CSV_HEADERS)
+        for result in results:
+            writer.writerow(result_to_row(result))
 
 
-def export_markdown(results: List[BenchmarkResult], path: Path) -> None:
-    """Write results to a Markdown table file."""
+def export_markdown(
+    results: Iterable[BenchmarkResult],
+    path: Path,
+    *,
+    timeout_seconds: float,
+) -> None:
+    result_list = list(results)
     path.parent.mkdir(parents=True, exist_ok=True)
-    col_widths = [max(len(h), 12) for h in _CSV_HEADERS]
-
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("# Experiment Results\n\n")
-        f.write("Generated by `experiments.py`.\n\n")
-
-        header = "| " + " | ".join(h.ljust(w) for h, w in zip(_CSV_HEADERS, col_widths)) + " |\n"
-        sep = "| " + " | ".join("-" * w for w in col_widths) + " |\n"
-        f.write(header)
-        f.write(sep)
-
-        for r in results:
-            row = _result_to_row(r)
-            line = "| " + " | ".join(str(v).ljust(w) for v, w in zip(row, col_widths)) + " |\n"
-            f.write(line)
-
-        f.write("\n## Summary\n\n")
-        for r in results:
-            f.write(
-                f"- **{r.name}** ({r.grid_size}): "
-                f"{r.sat_calls} SAT calls, "
-                f"{r.num_clauses} clauses, "
-                f"{r.total_runtime_ms:.3f} ms\n"
-            )
-
-    print(f"  -> Markdown saved to {path.relative_to(_PROJECT_ROOT)}")
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
-def main() -> None:
-    print("=" * 70)
-    print("  Griductive DPLL & Agent — Benchmark Experiments")
-    print("=" * 70)
-
-    puzzles_dir = _PROJECT_ROOT / "puzzles"
-    demo_files = sorted(puzzles_dir.glob("level_*.json"))
-
-    benchmarks_to_run = []
-
-    # Nạp từ các file JSON puzzle màn chơi thực tế
-    for p_path in demo_files:
-        if p_path.exists():
-            try:
-                name, snap, grid_size = _load_puzzle_from_json(p_path)
-                benchmarks_to_run.append((name, snap, grid_size))
-            except Exception as e:
-                print(f"[Bỏ qua {p_path.name}] {e}")
-
-    # Fallback sang synthetic benchmarks nếu không tìm thấy màn chơi JSON
-    if not benchmarks_to_run:
-        print("\n[Thông báo] Đang chạy bộ synthetic benchmarks chuẩn...")
-        benchmarks_to_run = [
-            _generate_3x3_synthetic(),
-            _generate_4x4_synthetic(),
-            _generate_5x5_synthetic(),
-        ]
-
-    results: List[BenchmarkResult] = []
-
-    for name, snapshot, grid_size in benchmarks_to_run:
-        print(f"\n>> Running: {name} ({grid_size})")
-        print(
-            f"  Clauses: {snapshot.clause_count}, "
-            f"Primary vars: {len(snapshot.cell_to_var)}, "
-            f"Aux vars: {snapshot.aux_var_count}"
+    with path.open("w", encoding="utf-8") as handle:
+        handle.write("# Experiment Results\n\n")
+        handle.write(
+            "Generated by `experiments.py`. Each successful row runs the "
+            "production no-guess deduction loop from the initial public KB. "
+            "SAT metrics describe one deterministic run; runtime is the mean "
+            "cumulative DPLL runtime across the completed repetitions. "
+            f"Per-run timeout: {timeout_seconds:.3f} seconds.\n\n"
         )
 
-        br = run_benchmark(name, snapshot, grid_size)
-        results.append(br)
+        headers = CSV_HEADERS[:-1]
+        handle.write("| " + " | ".join(headers) + " |\n")
+        handle.write("| " + " | ".join("---" for _ in headers) + " |\n")
+        for result in result_list:
+            row = result_to_row(result)[:-1]
+            handle.write("| " + " | ".join(map(str, row)) + " |\n")
 
-        print(f"  SAT calls:     {br.sat_calls}")
-        print(f"  Decisions:     {br.decisions}")
-        print(f"  Propagations:  {br.propagations}")
-        print(f"  Backtracks:    {br.backtracks}")
-        print(f"  Forced/Unknown: {br.forced_count}/{br.unknown_count}")
-        print(f"  Consistent:    {br.is_consistent}")
-        print(f"  Unique:        {br.is_unique}")
-        print(f"  Runtime:       {br.total_runtime_ms:.3f} ms")
+        handle.write("\n## Failures and timeouts\n\n")
+        unsuccessful = [result for result in result_list if result.status != "OK"]
+        if not unsuccessful:
+            handle.write("No failures or timeouts were observed.\n")
+        else:
+            for result in unsuccessful:
+                handle.write(
+                    f"- **{result.puzzle_file} — {result.status}:** "
+                    f"{result.error or 'No detail provided.'}\n"
+                )
 
-    # Export kết quả out file CSV và Markdown
-    out_dir = _PROJECT_ROOT / "output" / "experiments"
-    export_csv(results, out_dir / "results.csv")
-    export_markdown(results, out_dir / "results.md")
 
-    print("\n" + "=" * 70)
-    print("  All benchmarks complete.")
-    print("=" * 70)
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Benchmark the complete Griductive deduction loop."
+    )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=10,
+        help="number of repetitions per puzzle (default: 10)",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=5.0,
+        help="timeout in seconds for each repetition (default: 5)",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = _parse_args()
+    if args.runs <= 0:
+        raise SystemExit("--runs must be a positive integer.")
+    if args.timeout <= 0:
+        raise SystemExit("--timeout must be positive.")
+
+    puzzle_files = sorted((PROJECT_ROOT / "puzzles").glob("level_*.json"))
+    if not puzzle_files:
+        raise SystemExit("No official level_*.json puzzle files were found.")
+
+    print("Griductive progressive deduction experiments")
+    print(f"Runs per puzzle: {args.runs}; timeout: {args.timeout:.3f}s")
+    results: list[BenchmarkResult] = []
+    for path in puzzle_files:
+        result = benchmark_file(
+            path,
+            runs=args.runs,
+            timeout_seconds=args.timeout,
+        )
+        results.append(result)
+        print(
+            f"[{result.status}] {path.name}: steps={result.deduction_steps}, "
+            f"SAT calls={result.sat_calls}, "
+            f"runtime={result.mean_runtime_ms:.3f}ms"
+        )
+        if result.error:
+            print(f"    {result.error}")
+
+    output_dir = PROJECT_ROOT / "output" / "experiments"
+    export_csv(results, output_dir / "results.csv")
+    export_markdown(
+        results,
+        output_dir / "results.md",
+        timeout_seconds=args.timeout,
+    )
+
+    failed = sum(result.status != "OK" for result in results)
+    print(f"Completed {len(results)} puzzle rows; unsuccessful rows: {failed}.")
 
 
 if __name__ == "__main__":

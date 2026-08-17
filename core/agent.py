@@ -24,63 +24,16 @@ Usage
 from __future__ import annotations
 
 import re
-import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 from core.dpll import DPLLSolver, DPLLMetrics
-from core.dpll import DPLLSolver
-from core.encoder import CNFEncoder, Clue
+from core.encoder import KnowledgeBaseSnapshot
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
-
-@dataclass
-class KnowledgeBaseSnapshot:
-    """Public knowledge base at time *t* exchanged between CNF encoder and agent.
-
-    This is the **only** interface between the CNF/Engine modules (built by
-    other team members) and this agent.  All fields use plain Python types so
-    there is zero coupling to implementation details of the encoder.
-
-    Attributes
-    ----------
-    clauses : list[list[int]]
-        CNF formula – each inner list is a disjunctive clause of integer
-        literals.
-    primary_vars : dict[str, int]
-        Mapping from human-readable primary variable names to integer IDs
-        (e.g. ``{"C_A1": 1, "C_B1": 2}``).
-    unresolved_cell_ids : list[str]
-        Cell IDs whose status has not yet been determined.
-    cell_to_var : dict[str, int]
-        Mapping from cell ID (e.g. ``"A1"``) to the primary integer variable
-        that represents *"cell is Criminal"*.
-    active_clue_ids : list[str]
-        Identifiers of currently revealed clues contributing to KB_t.
-    known_statuses : dict[str, str]
-        Already-proven statuses: ``{cell_id: "CRIMINAL" | "INNOCENT"}``.
-    clause_count : int
-        Convenience: ``len(clauses)``.  May be set by the encoder.
-    aux_var_count : int
-        Number of auxiliary variables introduced by the encoder.
-    """
-
-    clauses: List[List[int]]
-    primary_vars: Dict[str, int]
-    unresolved_cell_ids: List[str]
-    cell_to_var: Dict[str, int]
-    active_clue_ids: List[str]
-    known_statuses: Dict[str, str]
-    clause_count: int = 0
-    aux_var_count: int = 0
-
-    def __post_init__(self) -> None:
-        if self.clause_count == 0:
-            self.clause_count = len(self.clauses)
-
 
 @dataclass
 class SATQuery:
@@ -104,6 +57,9 @@ class TraceStep:
     verdict: Optional[str]       # "CRIMINAL", "INNOCENT", or None
     cell_id: Optional[str]       # cell whose verdict was decided
     revealed_clue_id: Optional[str] = None
+    revealed_clue_type: Optional[str] = None
+    revealed_clue_text: Optional[str] = None
+    revealed_clue_references: Tuple[str, ...] = ()
     message: str = ""
 
 

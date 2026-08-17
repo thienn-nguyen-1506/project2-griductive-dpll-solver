@@ -82,6 +82,9 @@ class RealGameGateway:
                 sat_queries=entry.sat_queries,
                 verdict=entry.verdict,
                 revealed_clue_id=entry.revealed_clue_id,
+                revealed_clue_type=entry.revealed_clue_type,
+                revealed_clue_text=entry.revealed_clue_text,
+                revealed_clue_references=entry.revealed_clue_references,
             )
             for entry in self._engine.trace
         )

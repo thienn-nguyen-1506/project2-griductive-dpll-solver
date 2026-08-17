@@ -3,7 +3,7 @@
   "id": "level_02_3x3",
   "name": "Coffee Case",
   "size": 3,
-  "source": "Screenshot board: Ada to Karl (top-left 3x3).",
+  "source": "Redesigned non-linear logic puzzle based on the original screenshot characters.",
   "initial_revealed": [
     "A1",
     "C1"
@@ -20,12 +20,12 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_02_3X3-A1",
-        "type": "FACT",
+        "type": "DIFFERENT",
         "target_cells": [
-          "B1"
+          "C2",
+          "A3"
         ],
-        "value": "INNOCENT",
-        "text": "Bella is Innocent."
+        "text": "Gina and Ivy have different statuses."
       }
     },
     {
@@ -37,10 +37,10 @@
         "id": "LEVEL_02_3X3-B1",
         "type": "DIFFERENT",
         "target_cells": [
-          "B1",
-          "A2"
+          "A2",
+          "B3"
         ],
-        "text": "Bella and Eliza have different statuses."
+        "text": "Eliza and James have different statuses."
       }
     },
     {
@@ -50,28 +50,29 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_02_3X3-C1",
-        "type": "FACT",
+        "type": "AT_MOST",
         "target_cells": [
-          "A1"
+          "C2",
+          "A1",
+          "C1"
         ],
-        "value": "INNOCENT",
-        "text": "Ada is Innocent."
+        "value": 1,
+        "text": "At most 1 of Gina, Ada, Cole are Criminals."
       }
     },
     {
       "id": "A2",
       "name": "Eliza",
       "profession": "Mechanic",
-      "status": "CRIMINAL",
+      "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_02_3X3-A2",
-        "type": "EXACTLY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "A2",
-          "B2"
+          "A1",
+          "C1"
         ],
-        "value": 2,
-        "text": "Exactly 2 of Eliza and Finn are Criminals."
+        "text": "Ada and Cole have different statuses."
       }
     },
     {
@@ -81,13 +82,13 @@
       "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_02_3X3-B2",
-        "type": "AT_MOST",
-        "target_cells": [
-          "C2",
-          "C1"
-        ],
-        "value": 1,
-        "text": "At most 1 of Gina and Cole is a Criminal."
+        "type": "EXACTLY",
+        "region": {
+          "kind": "COLUMN",
+          "column": "B"
+        },
+        "value": 2,
+        "text": "Exactly 2 people in column B are Criminals."
       }
     },
     {
@@ -97,62 +98,64 @@
       "status": "INNOCENT",
       "clue": {
         "id": "LEVEL_02_3X3-C2",
-        "type": "PARITY",
+        "type": "DIFFERENT",
         "target_cells": [
-          "C2",
-          "A3"
+          "B1",
+          "C3"
         ],
-        "value": "EVEN",
-        "text": "There is an even number of Criminals among Gina and Ivy."
+        "text": "Bella and Karl have different statuses."
       }
     },
     {
       "id": "A3",
       "name": "Ivy",
       "profession": "Scientist",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_02_3X3-A3",
         "type": "COUNT_COMPARE",
         "left_cells": [
-          "C1"
+          "B1"
         ],
         "right_cells": [
-          "B3",
           "A1"
         ],
-        "operator": "GT",
-        "text": "Cole's group has more Criminals than the group of James and Ada."
+        "operator": "EQ",
+        "text": "The region containing Bella has the same Criminal count as the region containing Ada."
       }
     },
     {
       "id": "B3",
       "name": "James",
       "profession": "Teacher",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_02_3X3-B3",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
-          "C3"
+          "B2",
+          "A1",
+          "C1"
         ],
-        "value": "INNOCENT",
-        "text": "Karl is Innocent."
+        "value": 2,
+        "text": "Exactly 2 of Finn, Ada, Cole are Criminals."
       }
     },
     {
       "id": "C3",
       "name": "Karl",
       "profession": "Teacher",
-      "status": "INNOCENT",
+      "status": "CRIMINAL",
       "clue": {
         "id": "LEVEL_02_3X3-C3",
-        "type": "FACT",
+        "type": "EXACTLY",
         "target_cells": [
+          "A2",
+          "A1",
           "C1"
         ],
-        "value": "CRIMINAL",
-        "text": "Cole is a Criminal."
+        "value": 1,
+        "text": "Exactly 1 of Eliza, Ada, Cole are Criminals."
       }
     }
   ]
