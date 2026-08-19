@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "id": "level_04_4x4",
+  "name": "Bakery Case",
+  "size": 4,
+  "source": "Redesigned non-linear logic puzzle based on the original screenshot characters.",
+  "initial_revealed": [
+    "A1",
+    "B1",
+    "C1"
+  ],
+  "extensions_used": [
+    "PARITY",
+    "COUNT_COMPARE"
+  ],
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Abel",
+      "profession": "Pilot",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-A1",
+        "type": "SAME",
+        "target_cells": [
+          "D4",
+          "A2"
+        ],
+        "text": "Priya and Evan have the same status."
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bruno",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-B1",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "A2"
+        ],
+        "right_cells": [
+          "B1"
+        ],
+        "operator": "EQ",
+        "text": "The region containing Evan has the same Criminal count as the region containing Bruno."
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cody",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-C1",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "D1",
+          "B3"
+        ],
+        "text": "Dean and James have different statuses."
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Dean",
+      "profession": "Student",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-D1",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "B2",
+          "D3"
+        ],
+        "text": "Franz and Leo have different statuses."
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Evan",
+      "profession": "Clerk",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-A2",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "C2",
+          "A4"
+        ],
+        "text": "Gus and Mason have different statuses."
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Franz",
+      "profession": "Judge",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-B2",
+        "type": "SAME",
+        "target_cells": [
+          "D2",
+          "C4"
+        ],
+        "text": "Hazel and Owen have the same status."
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gus",
+      "profession": "Pilot",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-C2",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "C3",
+          "B4"
+        ],
+        "text": "Kira and Ned have different statuses."
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Hazel",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-D2",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "A1",
+          "B1"
+        ],
+        "text": "Abel and Bruno have different statuses."
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ike",
+      "profession": "Farmer",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-A3",
+        "type": "EXACTLY",
+        "region": {
+          "kind": "NEIGHBORS",
+          "cell": "B2"
+        },
+        "value": 4,
+        "text": "Exactly 4 neighbors of Franz are Criminals."
+      }
+    },
+    {
+      "id": "B3",
+      "name": "James",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-B3",
+        "type": "PARITY",
+        "target_cells": [
+          "C2",
+          "A1",
+          "B1",
+          "C1"
+        ],
+        "value": "ODD",
+        "text": "An odd number of Gus, Abel, Bruno, Cody are Criminals."
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Kira",
+      "profession": "Doctor",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-C3",
+        "type": "DIFFERENT",
+        "target_cells": [
+          "A1",
+          "B1"
+        ],
+        "text": "Abel and Bruno have different statuses."
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Leo",
+      "profession": "Judge",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-D3",
+        "type": "COUNT_COMPARE",
+        "left_cells": [
+          "C3"
+        ],
+        "right_cells": [
+          "A1"
+        ],
+        "operator": "EQ",
+        "text": "The region containing Kira has the same Criminal count as the region containing Abel."
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Mason",
+      "profession": "Clerk",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-A4",
+        "type": "AT_LEAST",
+        "target_cells": [
+          "B2",
+          "A1",
+          "B1",
+          "C1"
+        ],
+        "value": 2,
+        "text": "At least 2 of Franz, Abel, Bruno, Cody are Criminals."
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Ned",
+      "profession": "Clerk",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-B4",
+        "type": "EXACTLY",
+        "target_cells": [
+          "D2",
+          "A1",
+          "B1",
+          "C1"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Hazel, Abel, Bruno, Cody are Criminals."
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Owen",
+      "profession": "Student",
+      "status": "CRIMINAL",
+      "clue": {
+        "id": "LEVEL_04_4X4-C4",
+        "type": "EXACTLY",
+        "target_cells": [
+          "A3",
+          "A1",
+          "B1",
+          "C1"
+        ],
+        "value": 2,
+        "text": "Exactly 2 of Ike, Abel, Bruno, Cody are Criminals."
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Priya",
+      "profession": "Pilot",
+      "status": "INNOCENT",
+      "clue": {
+        "id": "LEVEL_04_4X4-D4",
+        "type": "EXACTLY",
+        "target_cells": [
+          "D1",
+          "A1",
+          "B1",
+          "C1"
+        ],
+        "value": 1,
+        "text": "Exactly 1 of Dean, Abel, Bruno, Cody are Criminals."
+      }
+    }
+  ]
+}

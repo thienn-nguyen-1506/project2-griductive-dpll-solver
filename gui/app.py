@@ -31,21 +31,21 @@ ctk.set_default_color_theme("blue")
 # ======================================================================
 # BẢNG MÀU GRAPHITE & ZINC GRAY (MINIMALIST)
 # ======================================================================
-theme.APP_BACKGROUND   = ("#f1f5f9", "#18181b")  # Nền Zinc Dark / Cool Light Gray
-theme.PANEL_BACKGROUND = ("#ffffff", "#27272a")  # Panel xám chì trung tính
-theme.PANEL_SOFT       = ("#e2e8f0", "#3f3f46")  # Nền mềm xám xi măng
-theme.BORDER           = ("#cbd5e1", "#52525b")  # Viền xám kim loại
+theme.APP_BACKGROUND   = ("#f1f5f9", "#18181b")
+theme.PANEL_BACKGROUND = ("#ffffff", "#27272a")
+theme.PANEL_SOFT       = ("#e2e8f0", "#3f3f46")
+theme.BORDER           = ("#cbd5e1", "#52525b")
 
-theme.PRIMARY          = ("#334155", "#e4e4e7")  # Bright Zinc Accent nổi bật trên xám tối
+theme.PRIMARY          = ("#334155", "#e4e4e7")
 theme.PRIMARY_HOVER    = ("#1e293b", "#f4f4f5")
 theme.PRIMARY_SOFT     = ("#e2e8f0", "#3f3f46")
-theme.PRIMARY_TEXT     = ("#ffffff", "#18181b")  # Chữ tối tương phản trên nút xám sáng
+theme.PRIMARY_TEXT     = ("#ffffff", "#18181b")
 
-theme.INNOCENT         = ("#059669", "#34d399")  # Green Mint Accent
+theme.INNOCENT         = ("#059669", "#34d399")
 theme.INNOCENT_SOFT    = ("#d1fae5", "#064e3b")
 theme.INNOCENT_HOVER   = ("#047857", "#6ee7b7")
 
-theme.CRIMINAL         = ("#e11d48", "#fb7185")  # Red Rose Accent
+theme.CRIMINAL         = ("#e11d48", "#fb7185")
 theme.CRIMINAL_SOFT    = ("#ffe4e6", "#4c0519")
 theme.CRIMINAL_HOVER   = ("#be123c", "#fca5a5")
 
@@ -54,11 +54,10 @@ theme.WARNING          = ("#d97706", "#fbbf24")
 theme.WARNING_SOFT     = ("#fef3c7", "#451a03")
 theme.ERROR            = ("#e11d48", "#fb7185")
 
-# Màu chữ & Điểm nhấn linh hoạt (Đã nâng cấp màu Highlight Rực Rỡ)
-COLOR_TEXT_MAIN       = ("#0f172a", "#fafafa")  # Chữ trắng bạc sáng
-COLOR_TEXT_MUTED      = ("#64748b", "#a1a1aa")  # Chữ phụ xám trung tính
-COLOR_ACTIVE_SELECTED = ("#334155", "#ffffff")  # Viền chọn xám bạc
-COLOR_RELATION        = ("#2563eb", "#38bdf8")  # Xanh Lam Electric (Cyan)
+COLOR_TEXT_MAIN       = ("#0f172a", "#fafafa")
+COLOR_TEXT_MUTED      = ("#64748b", "#a1a1aa")
+COLOR_ACTIVE_SELECTED = ("#334155", "#ffffff")
+COLOR_RELATION        = ("#2563eb", "#38bdf8")
 
 COLOR_DIMMED_BG      = ("#cbd5e1", "#27272a")
 COLOR_DIMMED_TEXT    = ("#94a3b8", "#71717a")
@@ -67,7 +66,6 @@ _AVATAR_CACHE: dict[tuple[int, int, bool], ctk.CTkImage] = {}
 
 
 def _draw_avatar_silhouette(color: tuple[int, int, int, int]) -> Image.Image:
-    """Tạo hình Silhouette nhân vật."""
     img = Image.new("RGBA", (256, 256), color=(0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.ellipse([88, 36, 168, 116], fill=color)
@@ -80,7 +78,6 @@ def get_avatar_ctk_image(
     dimmed: bool = False,
     image_path: str = "avatar.png",
 ) -> ctk.CTkImage:
-    """Tải Avatar hỗ trợ hiển thị sắc nét cho Gray Theme."""
     cache_key = (size[0], size[1], dimmed)
     if cache_key in _AVATAR_CACHE:
         return _AVATAR_CACHE[cache_key]
@@ -95,8 +92,8 @@ def get_avatar_ctk_image(
             img = ImageEnhance.Brightness(img).enhance(0.4)
         ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=size)
     else:
-        dark_silhouette = (51, 65, 85, 230)      # Slate Slate Dark cho Light Mode
-        light_silhouette = (228, 228, 231, 230)  # Zinc Bright Silver cho Dark Mode
+        dark_silhouette = (51, 65, 85, 230)
+        light_silhouette = (228, 228, 231, 230)
 
         light_img = _draw_avatar_silhouette(dark_silhouette)
         dark_img = _draw_avatar_silhouette(light_silhouette)
@@ -111,9 +108,6 @@ def get_avatar_ctk_image(
     return ctk_img
 
 
-# ----------------------------------------------------------------------
-# IN-APP POPUP DIALOGS
-# ----------------------------------------------------------------------
 class BaseModal(ctk.CTkFrame):
     def __init__(
         self,
@@ -386,8 +380,6 @@ class ConclusionNotPossibleDialog(BaseModal):
 
 
 class LevelSelectDialog(BaseModal):
-    """In-app catalog for loading one of the bundled logical puzzles."""
-
     def __init__(
         self,
         parent: ctk.CTk,
@@ -453,9 +445,6 @@ class LevelSelectDialog(BaseModal):
         callback(option)
 
 
-# ----------------------------------------------------------------------
-# CHARACTER CARD
-# ----------------------------------------------------------------------
 class CharacterCard(ctk.CTkFrame):
     def __init__(
         self,
@@ -647,7 +636,7 @@ class CharacterCard(ctk.CTkFrame):
 
             if highlight_color:
                 border_color = highlight_color
-                border_width = 3  # Tăng lên 3px để viền highlight sáng rực rõ ràng hơn
+                border_width = 3
 
             if selected:
                 border_color = COLOR_ACTIVE_SELECTED
@@ -663,9 +652,6 @@ class CharacterCard(ctk.CTkFrame):
         self.id_label.configure(text_color=text_color if not is_dimmed else COLOR_DIMMED_TEXT)
 
 
-# ----------------------------------------------------------------------
-# MAIN APPLICATION GUI
-# ----------------------------------------------------------------------
 class GriductiveApp(ctk.CTk):
     AUTO_DELAY_MS = 450
 
@@ -1102,7 +1088,6 @@ class GriductiveApp(ctk.CTk):
             )
 
     def _select_clue(self, cell_id: str) -> None:
-        """Highlight the exact region referenced by a revealed clue."""
         if self._ignore_clicks:
             return
 
@@ -1269,33 +1254,41 @@ class GriductiveApp(ctk.CTk):
 
         lines = [f"[STEP {entry.step:02d}] {msg}"]
 
+        nodes: list[tuple[str, list[str]]] = []
+
         if entry.sat_queries:
             queries_str = " | ".join(entry.sat_queries)
             queries_str = queries_str.replace(" and not ", " ∧ ¬").replace(" and ", " ∧ ")
-            lines.append(f"  ├── SAT Query : {queries_str}")
+            nodes.append(("SAT Query ", [queries_str]))
 
         if entry.verdict:
-            lines.append(f"  ├── Verdict   : {entry.verdict}")
+            nodes.append(("Verdict   ", [entry.verdict]))
 
         if entry.revealed_clue_id:
             clue_label = entry.revealed_clue_id
             if entry.revealed_clue_type:
                 clue_label += f" [{entry.revealed_clue_type}]"
-            has_details = bool(
-                entry.revealed_clue_text or entry.revealed_clue_references
-            )
-            branch = "├──" if has_details else "└──"
-            lines.append(f"  {branch} KB Update : + {clue_label}")
-            if entry.revealed_clue_text:
-                text_branch = (
-                    "│  " if entry.revealed_clue_references else "└──"
-                )
-                lines.append(
-                    f"  {text_branch} Clue      : {entry.revealed_clue_text}"
-                )
+            nodes.append(("KB Update ", [f"+ {clue_label}"]))
+
             if entry.revealed_clue_references:
                 references = ", ".join(entry.revealed_clue_references)
-                lines.append(f"  └── References: {references}")
+                nodes.append(("References", [references]))
+
+            if entry.revealed_clue_text:
+                wrapped = textwrap.wrap(entry.revealed_clue_text, width=38)
+                if wrapped:
+                    nodes.append(("Clue      ", wrapped))
+
+        for i, (label, val_lines) in enumerate(nodes):
+            is_last = (i == len(nodes) - 1)
+            branch = "  └── " if is_last else "  ├── "
+            continuation_space = "      " if is_last else "  │   "
+
+            lines.append(f"{branch}{label}: {val_lines[0]}")
+
+            indent = continuation_space + " " * (len(label) + 2)
+            for line in val_lines[1:]:
+                lines.append(f"{indent}{line}")
 
         return "\n".join(lines)
 
